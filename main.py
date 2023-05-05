@@ -1,12 +1,14 @@
 import requests
+from requests.auth import HTTPBasicAuth
 import pandas as pd
 from tqdm import tqdm
-from time import perf_counter
+from time import perf_counter, time
 
 
 def getProtocols():
     resp = requests.get('https://api.llama.fi/protocols')
     return resp.json()
+
 
 def getProtocolTVLHistorical(protocol_slug):
     url = f'https://api.llama.fi/protocol/{protocol_slug}'
@@ -31,6 +33,7 @@ def getProtocolTVLHistorical(protocol_slug):
         else:
             print(f'Retry Failed: {protocol_slug}')
    
+
 def processTVLData(tdates, ttvls):
     tdf = pd.DataFrame(data={'timestamp': tdates, 'tvls': ttvls})
     tdf['dates'] = tdf['timestamp'].values.astype(dtype='datetime64[s]')
@@ -42,6 +45,7 @@ def processTVLData(tdates, ttvls):
     sevenday = tdf['7dma_%'].values.tolist()
     thirtyday = tdf['1mma_%'].values.tolist()
     return sevenday[-1], thirtyday[-1]
+
 
 def getVolumeData():
     # Fetches DEX Volume Data
@@ -64,6 +68,39 @@ def getVolumeData():
     df_vol = df_vol.rename(columns={'defillamaId': 'id', 'change_7d': 'Volume_7d_%', 'change_1m': 'Volume_1m_%'})
     df_vol['id'].astype(int)
     return df_vol
+
+
+# limit to 100k credits (2 credits per token holders request)
+def getTokenHolderCount(tokenAddress, block=0):
+    chainName = 'eth-mainnet'
+    if block == 0:
+        url = f"https://api.covalenthq.com/v1/{chainName}/tokens/{tokenAddress}/token_holders_v2/"
+    else:
+        url = f"https://api.covalenthq.com/v1/{chainName}/tokens/{tokenAddress}/token_holders_v2/?block-height={block}"
+            
+    headers = {
+        "accept": "application/json",
+    }
+
+    basic = HTTPBasicAuth('cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm', '')
+    response = requests.get(url, headers=headers, auth=basic)
+    resp = response.json()
+    holder_count = resp.get('data', {}).get('pagination', {}).get('total_count', "NA")
+
+    print(response.json())
+    return holder_count
+
+
+def getBlockByTimestamp(timestamp):
+    m_apikey = "I42NRodUvq7iUeKVvs86RZZ7sFVYXvY9K1ZKrvzin4dJZK2aJC9GXYictplGAIpr"
+    headers = {"X-API-Key": m_apikey, "accept": "application/json",}
+    url = f'https://deep-index.moralis.io/api/v2/dateToBlock?chain=eth&date={timestamp}'
+    resp = requests.get(url, headers=headers)
+    results = resp.json()
+    return results
+
+
+
 
 
 if __name__ == '__main__':
@@ -120,18 +157,15 @@ if __name__ == '__main__':
 
 
     # TODO: Add Token Holder Count metric
-    address = [1, 2, 3] # INPUT
-
-    # Outputs
-    ChangeSevenDayHolderCount_percent = [1, 2, 3]
-
-    SevenDict = {
-        '1': 0.45,
-        '2': 0.35
-        }
-    Thirty = {
-        '1': 1
-    }
+    ts = 1683261036
+    blk = 14190032
+    addy = '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0'
+    # timestamps
+    now = int(time())
+    sevenday = now - 60*60*24*7
+    print(sevenday)
+    thirtyday = now - 60*60*24*30
+    print(thirtyday)
 
 
     # TODO: Add Users metric
