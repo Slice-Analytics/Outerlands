@@ -1,8 +1,10 @@
+import pandas as pd
 import requests
 from requests.auth import HTTPBasicAuth
-import pandas as pd
 from tqdm import tqdm
-from time import perf_counter, time
+from web3 import Web3
+from time import perf_counter, time, sleep
+from datetime import datetime, timezone
 
 
 def getProtocols():
@@ -86,19 +88,46 @@ def getTokenHolderCount(tokenAddress, block=0):
     response = requests.get(url, headers=headers, auth=basic)
     resp = response.json()
     holder_count = resp.get('data', {}).get('pagination', {}).get('total_count', "NA")
-
-    print(response.json())
+    
     return holder_count
 
 
 def getBlockByTimestamp(timestamp):
+    # takes timestamp and returns block height
     m_apikey = "I42NRodUvq7iUeKVvs86RZZ7sFVYXvY9K1ZKrvzin4dJZK2aJC9GXYictplGAIpr"
     headers = {"X-API-Key": m_apikey, "accept": "application/json",}
     url = f'https://deep-index.moralis.io/api/v2/dateToBlock?chain=eth&date={timestamp}'
     resp = requests.get(url, headers=headers)
     results = resp.json()
-    return results
+    return results['block']
 
+
+def getTokenHolderCountMetrics(tokens):
+    # generating daily, -7 day, -30 day timestamps
+    date_example = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    ts_day = datetime.timestamp(date_example)
+    ts = [ts_day, ts_day-(60*60*24*7), ts_day-(60*60*24*30)]
+    # inputs timestamp and returns closest block number for the given timestamp
+    blks = [getBlockByTimestamp(t) for t in ts]
+
+    # generates lookup dictionary for tokens
+    thcs_7day_dict, thcs_30day_dict = {}, {}
+    for token in tqdm(tokens):
+        start = perf_counter()
+        temp_thc = [getTokenHolderCount(token, blk) for blk in blks]
+        day7 = (temp_thc[0]-temp_thc[1])/temp_thc[1]*100
+        thcs_7day_dict[token] = day7
+        day30 = (temp_thc[0]-temp_thc[2])/temp_thc[2]*100
+        thcs_30day_dict[token] = day30
+        end = perf_counter()
+        # rarte limiter for API call of 4 requests/sec
+        if (end-start) < 1:
+            sleep(1-(end-start))
+
+    thcs_7day = [thcs_7day_dict.get(token, 'NA') for token in tokens]
+    thcs_30day = [thcs_30day_dict.get(token, 'NA') for token in tokens]
+    
+    return thcs_7day, thcs_30day
 
 
 
@@ -142,6 +171,7 @@ if __name__ == '__main__':
             print('\nelsed')
             sevendayma.append("NA")
             thirtydayma.append("NA")
+        sleep(0.5)
 
     # Adds moving averages to Dataframe
     df['7dma_%'] = sevendayma
@@ -156,24 +186,23 @@ if __name__ == '__main__':
     # print(df['change_7d'].count())
 
 
-    # TODO: Add Token Holder Count metric
-    ts = 1683261036
-    blk = 14190032
-    addy = '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0'
-    # timestamps
-    now = int(time())
-    sevenday = now - 60*60*24*7
-    print(sevenday)
-    thirtyday = now - 60*60*24*30
-    print(thirtyday)
+    #Fetchs Token Holder Count metrics
+    hdc = df['address'].values.tolist()
+    eth_tokens = [address for address in hdc if Web3.is_address(address)]
+    chain_stats = ["ETH" if Web3.is_address(address) else "TBD" for address in hdc]
+    thcs_7day_dict, thcs_30day_dict = getTokenHolderCountMetrics(eth_tokens)
+
+    df['HolderCounts_7day%'] = [thcs_7day_dict.get(token, 'NA') for token in hdc]
+    df['HolderCounts_30day%'] = [thcs_30day_dict.get(token, 'NA') for token in hdc]
 
 
     # TODO: Add Users metric
     # Users of Protocol Token
-    # 
+    # TBD -> Dependant on Atremis or dappradar data
+    # long term would be great to setup our own db to manage
 
 
-    df.to_csv('variant_db.csv', index=False)
+    df.to_csv('variant_db2.csv', index=False)
 
     print(f"Runtime: {(perf_counter()-start_time)/60} mintues")
 
