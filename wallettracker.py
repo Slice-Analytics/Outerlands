@@ -24,4 +24,57 @@ wallet_dict = {
     '0x10e7d26a02bd124250ea00c41dcd16fc791ccd78': ['Messi', 'Notable Individual'],
 }
 
+# Example Query Info
+# query = Query(
+#     name="V_01_task_2",
+#     query_id=2448228,
+#     params=[
+#         # QueryParameter.text_type(name="TextField", value="Word"),
+#         QueryParameter.number_type(name="days_ago", value=1),
+#         # QueryParameter.date_type(name="DateField", value="2022-05-04 00:00:00"),
+#         # QueryParameter.enum_type(name="EnumField", value="Option 1"),
+#     ],
+# )
 
+
+#Dune Query Exmaple
+# import dotenv
+# import os
+# from dune_client.types import QueryParameter
+# from dune_client.client import DuneClient
+# from dune_client.query import Query
+
+# query = Query(
+#     name="Sample Query",
+#     query_id=2423589,
+#     params=[
+#         # QueryParameter.text_type(name="TextField", value="Word"),
+#         QueryParameter.number_type(name="AmountField", value=5),
+#         # QueryParameter.date_type(name="DateField", value="2022-05-04 00:00:00"),
+#         # QueryParameter.enum_type(name="EnumField", value="Option 1"),
+#     ],
+# )
+# print("Results available at", query.url())
+
+# dotenv.load_dotenv(".env\DUNE_API_KEY.txt")
+# dune = DuneClient(os.environ["DUNE_API_KEY"])
+# results = dune.refresh(query)
+
+# print(results)
+
+
+
+# Main program
+Address = ['address1']
+results = getDuneQuery(Address)
+
+# TODO: Add wallet labels & context
+
+# TODO: Calculate True Token Amount
+# TODO: Calculate Token Value in USD
+# TODO: Add simple action label (sell or buy)
+# TODO: Gather any additional Contract information
+# TODO: Save as .CSV
+# TODO: single .CSV database
+
+# Daily updates -> Dictates info limit 2.5M -> 
