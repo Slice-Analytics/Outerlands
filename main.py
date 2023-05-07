@@ -3,7 +3,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 from tqdm import tqdm
 from web3 import Web3
-from time import perf_counter, time, sleep
+from time import perf_counter, sleep
 from datetime import datetime, timezone
 
 
@@ -86,10 +86,30 @@ def getTokenHolderCount(tokenAddress, block=0):
 
     basic = HTTPBasicAuth('cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm', '')
     response = requests.get(url, headers=headers, auth=basic)
-    resp = response.json()
-    holder_count = resp.get('data', {}).get('pagination', {}).get('total_count', "NA")
-    
-    return holder_count
+    sleep(1)
+    if response.status_code == 200:
+        resp = response.json()
+        holder_count = resp.get('data', {}).get('pagination', {}).get('total_count', "NA")
+        # if check handlea tokens wihtout 7 or 30 days of data
+        if holder_count == None:
+            return 0
+        else:
+            return holder_count
+    else:
+        print(f'Response Status Code: {response.status_code}')
+        covalent_status_dict = {
+        200: 'OK, Everything worked as expected.',
+        400: 'Bad Request: The request could not be accepted, usually due to a missing required parameter.',
+        401: 'Unauthorized:	No valid API key was provided.',
+        404: 'Not Found: The request path does not exist.',
+        429: 'Too Many Requests: You are being rate-limited. Please see the rate limiting section for more information.',
+        500: "Server Errors: Something went wrong on Covalent's servers.",
+        502: "Server Errors: Something went wrong on Covalent's servers.",
+        503: "Server Errors: Something went wrong on Covalent's servers.",
+        }
+        print(f'Response Status Code = {response.status_code}: {covalent_status_dict[response.status_code]}')
+        # TODO: Replace quit() with a proper error handling if possible
+        quit()
 
 
 def getBlockByTimestamp(timestamp):
@@ -103,6 +123,7 @@ def getBlockByTimestamp(timestamp):
 
 
 def getTokenHolderCountMetrics(tokens):
+    print('Fetching Token Holder Count Meitrcs')
     # generating daily, -7 day, -30 day timestamps
     date_example = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     ts_day = datetime.timestamp(date_example)
@@ -115,20 +136,22 @@ def getTokenHolderCountMetrics(tokens):
     for token in tqdm(tokens):
         start = perf_counter()
         temp_thc = [getTokenHolderCount(token, blk) for blk in blks]
-        day7 = (temp_thc[0]-temp_thc[1])/temp_thc[1]*100
+        if temp_thc[1] == 0:
+            day7 = (temp_thc[0]-1)*100
+        else:
+            day7 = (temp_thc[0]-temp_thc[1])/temp_thc[1]*100
         thcs_7day_dict[token] = day7
-        day30 = (temp_thc[0]-temp_thc[2])/temp_thc[2]*100
+        if temp_thc[2] == 0:
+            day30 = (temp_thc[0]-1)*100
+        else:
+            day30 = (temp_thc[0]-temp_thc[2])/temp_thc[2]*100
         thcs_30day_dict[token] = day30
         end = perf_counter()
         # rarte limiter for API call of 4 requests/sec
         if (end-start) < 1:
             sleep(1-(end-start))
-
-    thcs_7day = [thcs_7day_dict.get(token, 'NA') for token in tokens]
-    thcs_30day = [thcs_30day_dict.get(token, 'NA') for token in tokens]
     
-    return thcs_7day, thcs_30day
-
+    return thcs_7day_dict, thcs_30day_dict
 
 
 
@@ -158,6 +181,7 @@ if __name__ == '__main__':
     sevendayma, thirtydayma = [], []
     # Remove index for full run
     print('Fetching Historical TVL Data')
+    failed_slugs = []
     for slug in tqdm(slugs):
         # gets historical TVL data for given Protocol
         dates, tvls = getProtocolTVLHistorical(slug)
@@ -168,14 +192,15 @@ if __name__ == '__main__':
             sevendayma.append(tempa)
             thirtydayma.append(tempb)
         else:
-            print('\nelsed')
+            print('\nFailed to fetch Historical TVL Data:', slug)
+            failed_slugs.append(slug)
             sevendayma.append("NA")
             thirtydayma.append("NA")
         sleep(0.5)
 
-    # Adds moving averages to Dataframe
-    df['7dma_%'] = sevendayma
-    df['1mma_%'] = thirtydayma
+    # Adds TVL moving averages to Dataframe
+    df['TVL_7dma_%'] = sevendayma
+    df['TVL_1mma_%'] = thirtydayma
 
     # Adds Volume metrics (Does NOT get all Historical Volume Data)
     vol = getVolumeData()
@@ -183,7 +208,7 @@ if __name__ == '__main__':
 
     # Joins Volume data onto main Dataframe
     df = df.merge(vol, how='left', on='id')
-    # print(df['change_7d'].count())
+    print(f'Protocols Tracked Post Vol Merge: {len(df)}')
 
 
     #Fetchs Token Holder Count metrics
