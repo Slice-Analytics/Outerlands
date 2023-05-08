@@ -33,7 +33,7 @@ def getTopPoolsByToken(token_address, chain="eth"):
 
 
 # {
-#   "data": [
+#   "data":      
 #     {
 #       "id": "string",
 #       "type": "string",

@@ -36,6 +36,3 @@ def getCoinPrices(address_list, chain="ethereum", searchWidth=0):
     #   }
     # }
     
-
-adde = ['0xcdf7028ceab81fa0c6971208e83fa7872994bee5', '0x31c8eacbffdd875c74b94b077895bd78cf1e64a3']
-print(getCoinPrices(adde))
