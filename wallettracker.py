@@ -24,55 +24,157 @@ wallet_dict = {
     '0x10e7d26a02bd124250ea00c41dcd16fc791ccd78': ['Messi', 'Notable Individual'],
 }
 
-# Example Query Info
-# query = Query(
-#     name="V_01_task_2",
-#     query_id=2448228,
-#     params=[
-#         # QueryParameter.text_type(name="TextField", value="Word"),
-#         QueryParameter.number_type(name="days_ago", value=1),
-#         # QueryParameter.date_type(name="DateField", value="2022-05-04 00:00:00"),
-#         # QueryParameter.enum_type(name="EnumField", value="Option 1"),
-#     ],
-# )
+
+#import dotenv
+import os
+from dune_client.types import QueryParameter
+from dune_client.client import DuneClient
+from dune_client.query import Query
+import pandas as pd
+import numpy as np
+from defillama import getCoinPrices
+from geckoterminal import getTopPoolsByToken 
 
 
-#Dune Query Exmaple
-# import dotenv
-# import os
-# from dune_client.types import QueryParameter
-# from dune_client.client import DuneClient
-# from dune_client.query import Query
+API_KEY = "4j6BpVadKDiYMQBy53l8e7KEl43FTpLF"
 
-# query = Query(
-#     name="Sample Query",
-#     query_id=2423589,
-#     params=[
-#         # QueryParameter.text_type(name="TextField", value="Word"),
-#         QueryParameter.number_type(name="AmountField", value=5),
-#         # QueryParameter.date_type(name="DateField", value="2022-05-04 00:00:00"),
-#         # QueryParameter.enum_type(name="EnumField", value="Option 1"),
-#     ],
-# )
-# print("Results available at", query.url())
+# Dune Analytics Query Section -> 
+query = Query(
+    name="API TEST",
+    query_id=2448228,
+    params=[
+        # QueryParameter.text_type(name="TextField", value="Word"),
+        QueryParameter.number_type(name="days_ago", value=1),
+        # QueryParameter.date_type(name="DateField", value="2022-05-04 00:00:00"),
+        # QueryParameter.enum_type(name="EnumField", value="Option 1"),
+    ],
+)
+print("Results available at", query.url())
 
-# dotenv.load_dotenv(".env\DUNE_API_KEY.txt")
-# dune = DuneClient(os.environ["DUNE_API_KEY"])
-# results = dune.refresh(query)
 
-# print(results)
+dune = DuneClient(API_KEY)
+response = dune.refresh(query)
+data = pd.DataFrame(response.result.rows)
+data.to_csv("data.csv", index=False)
+#data = pd.read_csv("data.csv")
 
 
 
-# Main program
-Address = ['address1']
-results = getDuneQuery(Address)
+# Price/Symbol/Decimals Data Section -> 
 
-# TODO: Add wallet labels & context
+addresses = data['contract_address'].tolist()
+price_results = getCoinPrices(addresses)
+price = price_results.get('coins', 'N/A')
+price_list,symbol_list,decimal_list = [],[],[]
 
-# TODO: Calculate True Token Amount
-# TODO: Calculate Token Value in USD
-# TODO: Add simple action label (sell or buy)
+for i in addresses:
+    input = 'ethereum:' + i 
+    price_list.append(price.get(input, {}).get('price', 'N/A'))
+    symbol_list.append(price.get(input, {}).get('symbol', 'N/A'))
+    decimal_list.append(price.get(input, {}).get('decimals', 'N/A'))
+
+data['price'] = price_list
+data['symbol'] = symbol_list
+data['decimal'] = decimal_list
+
+data.to_csv("data2.csv", index=False)    
+
+
+# Liquidity Data Section -> 
+data = pd.read_csv("data2.csv")
+addresses = data['contract_address'].tolist()
+liquidity_list = []
+for i in addresses:
+    liquidity_results = getTopPoolsByToken(i)
+    liquidity = 0
+
+    for lp in liquidity_results['data']:
+        liquidity += float(lp.get('attributes', {}).get('reserve_in_usd', 0))
+
+    liquidity_list.append(liquidity)
+
+print(liquidity_list)
+data['liquidity'] = liquidity_list
+data.to_csv("data3.csv", index=False)
+
+
+
+# Add Labels Section ->
+
+data = pd.read_csv("data3.csv")
+
+# convert keys to lowercase to match dataframe
+#wallet_lower = {k.lower(): v for k, v in wallet_dict.items()}
+wallet_lower ={}
+for k,v in wallet_dict.items(): 
+    wallet_lower[k.lower()] = v
+
+to_address = data['to'].tolist()    
+from_address = data['from'].tolist()    
+#zip the two lists together into a list of tuples
+address_list = list(zip(to_address, from_address))
+
+from_labels_list = []
+from_context_list = []
+to_labels_list = []
+to_context_list = []
+buy_sell = []
+for i,j in address_list:
+    if i in list(wallet_lower.keys()) and j in list(wallet_lower.keys()):
+        buy_sell.append('Tracked Wallet Buy & Sell')
+    elif i in list(wallet_lower.keys()):
+        buy_sell.append('Buy')
+    elif j in list(wallet_lower.keys()):
+        buy_sell.append('Sell')
+    else:
+        buy_sell.append('None')
+
+
+    if wallet_lower.get(j):
+        from_labels_list.append(wallet_lower.get(j)[0])
+    else:
+        from_labels_list.append('')
+    if wallet_lower.get(j):
+        from_context_list.append(wallet_lower.get(j)[1]) 
+    else:
+        from_context_list.append('')
+
+
+    if wallet_lower.get(i):
+        to_labels_list.append(wallet_lower.get(i)[0])
+    else:
+        to_labels_list.append('')
+    if wallet_lower.get(i):
+        to_context_list.append(wallet_lower.get(i)[1])
+    else:
+        to_context_list.append('')
+
+
+data['Transaction Type'] = buy_sell
+data['From Label'] = from_labels_list
+data['From Context'] = from_context_list
+data['To Label'] = to_labels_list
+data['To Context'] = to_context_list
+print(data) 
+data.to_csv("data4.csv", index=False)        
+
+# Calc token value and amount section ->
+
+
+data = pd.read_csv("data4.csv")
+
+
+#Learn more about datatypes
+data = data.assign(token_amount=data['value'].astype(float) / (10 ** data['decimal']))
+data = data.assign(token_value=data['token_amount'] * data['price'])
+print(data)
+data.to_csv("Final.csv", index=False)
+
+# TODO: Add wallet labels & context - TIM use .get function to pull data from dictionary (within dictionary are lists)
+# TODO: Calculate True Token Amount - TIM (mulitply several rows and add to end of column)
+# TODO: Calculate Token Value in USD - TIM (mulitply several rows and add to end of column)
+# TODO: Add available liquditiy for token (geckoterminal.py, getTopPoolsByToken, no API key needed. #response.get(data,{})[0])
+# TODO: Add simple action label (sell or buy) (For loop use logic to determine what is buy and what is sell)
 # TODO: Gather any additional Contract information
 # TODO: Save as .CSV
 # TODO: single .CSV database
