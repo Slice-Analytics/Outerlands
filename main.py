@@ -228,11 +228,14 @@ if __name__ == '__main__':
     df['Holder Counts (1mma)'] = df['Holder Counts (1mma)'].div(100)
 
 
+
     # TODO: Add Users metric
     # Users of Protocol Token
     # TBD -> Dependant on Atremis or dappradar data
     # long term would be great to setup our own db to manage
 
+
+    # Preparation for .csv save
     date_ts = date.today()
     date_ts = str(date_ts).replace("-","")
     file_name = f"Protocols_{date_ts}.csv"
