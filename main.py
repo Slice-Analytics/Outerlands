@@ -4,7 +4,7 @@ from requests.auth import HTTPBasicAuth
 from tqdm import tqdm
 from web3 import Web3
 from time import perf_counter, sleep
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 
 def getProtocols():
@@ -41,9 +41,10 @@ def processTVLData(tdates, ttvls):
     tdf['dates'] = tdf['timestamp'].values.astype(dtype='datetime64[s]')
     tdf['dates'] = pd.to_datetime(tdf['dates']).dt.date
     tdf['7dma'] = tdf['tvls'].rolling(window=7, min_periods=1).mean()
-    tdf['7dma_%'] = tdf['7dma'].pct_change(periods=1).fillna(0)
+    tdf['7dma_%'] = tdf['7dma'].pct_change(periods=7).fillna(0)
     tdf['1mma'] = tdf['tvls'].rolling(window=30, min_periods=1).mean()
-    tdf['1mma_%'] = tdf['1mma'].pct_change(periods=1).fillna(0)
+    tdf['1mma_%'] = tdf['1mma'].pct_change(periods=30).fillna(0)
+
     sevenday = tdf['7dma_%'].values.tolist()
     thirtyday = tdf['1mma_%'].values.tolist()
     return sevenday[-1], thirtyday[-1]
@@ -67,8 +68,10 @@ def getVolumeData():
 
     # Combines DEX & Option Volume Data to single Dataframe
     df_vol = pd.concat([df_vol, df_vol2]).reset_index(drop=True)
-    df_vol = df_vol.rename(columns={'defillamaId': 'id', 'change_7d': 'Volume_7d_%', 'change_1m': 'Volume_1m_%'})
+    df_vol = df_vol.rename(columns={'defillamaId': 'id', 'change_7d': 'Volume (7dma)', 'change_1m': 'Volume (1mma)'})
     df_vol['id'].astype(int)
+    df_vol['Volume (7dma)'] = df_vol['Volume (7dma)'].div(100)
+    df_vol['Volume (1mma)'] = df_vol['Volume (1mma)'].div(100)
     return df_vol
 
 
@@ -194,13 +197,15 @@ if __name__ == '__main__':
         else:
             print('\nFailed to fetch Historical TVL Data:', slug)
             failed_slugs.append(slug)
-            sevendayma.append("NA")
-            thirtydayma.append("NA")
+            sevendayma.append(None)
+            thirtydayma.append(None)
         sleep(0.5)
 
     # Adds TVL moving averages to Dataframe
-    df['TVL_7dma_%'] = sevendayma
-    df['TVL_1mma_%'] = thirtydayma
+    df['TVL (7dma)'] = sevendayma
+    df['TVL (1mma)'] = thirtydayma
+    # df['TVL (7dma)'] = df['TVL (7dma)'].div(100)
+    # df['TVL (1mma)'] = df['TVL (1mma)'].div(100)
 
     # Adds Volume metrics (Does NOT get all Historical Volume Data)
     vol = getVolumeData()
@@ -217,8 +222,10 @@ if __name__ == '__main__':
     chain_stats = ["ETH" if Web3.is_address(address) else "TBD" for address in hdc]
     thcs_7day_dict, thcs_30day_dict = getTokenHolderCountMetrics(eth_tokens)
 
-    df['HolderCounts_7day%'] = [thcs_7day_dict.get(token, 'NA') for token in hdc]
-    df['HolderCounts_30day%'] = [thcs_30day_dict.get(token, 'NA') for token in hdc]
+    df['Holder Counts (7dma)'] = [thcs_7day_dict.get(token, None) for token in hdc]
+    df['Holder Counts (1mma)'] = [thcs_30day_dict.get(token, None) for token in hdc]
+    df['Holder Counts (7dma)'] = df['Holder Counts (7dma)'].div(100)
+    df['Holder Counts (1mma)'] = df['Holder Counts (1mma)'].div(100)
 
 
     # TODO: Add Users metric
@@ -226,8 +233,10 @@ if __name__ == '__main__':
     # TBD -> Dependant on Atremis or dappradar data
     # long term would be great to setup our own db to manage
 
-
-    df.to_csv('variant_db2.csv', index=False)
+    date_ts = date.today()
+    date_ts = str(date_ts).replace("-","")
+    file_name = f"Protocols_{date_ts}.csv"
+    df.to_csv(file_name, index=False)
 
     print(f"Runtime: {(perf_counter()-start_time)/60} mintues")
 
