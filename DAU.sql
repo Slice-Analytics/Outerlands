@@ -1,57 +1,81 @@
 WITH _7D AS (
 
 select 
-    date
-    ,namespace
-    ,friendly_name
-    ,category
-    ,chain
-    ,coingecko_id
-    ,avg(transactions) as tx_7d
-    ,avg(DAU) as DAU_7d
-    ,avg(RETURNING_USERS) as RETURNING_USERS_7d
-    ,avg(NEW_USERS) as NEW_USERS_7d
-from ARTEMIS_ANALYTICS.PROD.ALL_CHAINS_GAS_DAU_TXNS_BY_NAMESPACE
-where date <= DATEADD(DAY, -7, CURRENT_DATE())
-group by 1,2,3,4,5,6
+    namespace
+    ,avg(transactions) as avg_tx_7d
+    ,avg(DAU) as avg_DAU_7d
+    ,avg(RETURNING_USERS) as avg_RETURNING_USERS_7d
+    ,avg(NEW_USERS) as avg_NEW_USERS_7d
+from BAM_BY_NAMESPACE
+where date >= DATEADD(DAY, -7, CURRENT_DATE())
+group by 1
 
 )
 
 ,_30D AS (
 
 select 
-    date
-    ,namespace
-    ,friendly_name
-    ,category
-    ,chain
-    ,coingecko_id
-    ,avg(transactions) as tx_30d
-    ,avg(DAU) as DAU_30d
-    ,avg(RETURNING_USERS) as RETURNING_USERS_30d
-    ,avg(NEW_USERS) as NEW_USERS_30d
-from ARTEMIS_ANALYTICS.PROD.ALL_CHAINS_GAS_DAU_TXNS_BY_NAMESPACE
-where date <= DATEADD(DAY, -30, CURRENT_DATE())
-group by 1,2,3,4,5,6
+    namespace
+    ,avg(transactions) as avg_tx_30d
+    ,avg(DAU) as avg_DAU_30d
+    ,avg(RETURNING_USERS) as avg_RETURNING_USERS_30d
+    ,avg(NEW_USERS) as avg_NEW_USERS_30d
+from BAM_BY_NAMESPACE
+where date >= DATEADD(DAY, -30, CURRENT_DATE())
+--and namespace = 'gmx'
+group by 1
+
+)
+,_7D_prev AS (
+
+select 
+    namespace
+    ,avg(transactions) as avg_tx_7d_prev
+    ,avg(DAU) as avg_DAU_7d_prev
+    -- ,avg(RETURNING_USERS) as avg_RETURNING_USERS_7d
+    -- ,avg(NEW_USERS) as avg_NEW_USERS_7d
+from BAM_BY_NAMESPACE
+where date >= DATEADD(DAY, -8, CURRENT_DATE()) and date < CURRENT_DATE()
+group by 1
+
+)
+
+,_30D_prev AS (
+
+select 
+    namespace
+    ,avg(transactions) as avg_tx_30d_prev
+    ,avg(DAU) as avg_DAU_30d_prev
+    -- ,avg(RETURNING_USERS) as avg_RETURNING_USERS_30d
+    -- ,avg(NEW_USERS) as avg_NEW_USERS_30d
+from BAM_BY_NAMESPACE
+where date >= DATEADD(DAY, -31, CURRENT_DATE()) and date < CURRENT_DATE()
+--and namespace = 'gmx'
+group by 1
 
 )
 
 
 
 SELECT
-    a.date
-    ,a.namespace
-    ,a.friendly_name
-    ,a.category
-    ,a.chain
-    ,a.coingecko_id
-    ,a.DAU_7d
-    ,b.DAU_30d
-    ,a.tx_7d
-    ,b.tx_30d
-    ,a.RETURNING_USERS_7d
-    ,b.RETURNING_USERS_30d
-    ,a.NEW_USERS_7d
-    ,b.NEW_USERS_30d
+    a.namespace
+    ,a.avg_DAU_7d
+    ,c.avg_DAU_7d_prev
+    ,(a.avg_DAU_7d-c.avg_DAU_7d_prev)/c.avg_DAU_7d_prev*100 as DAU_7dma_per
+    ,b.avg_DAU_30d
+    ,d.avg_DAU_30d_prev
+    ,(b.avg_DAU_30d-d.avg_DAU_30d_prev)/d.avg_DAU_30d_prev*100 as DAU_30dma_per
+    ,a.avg_tx_7d
+    ,c.avg_tx_7d_prev
+    ,(a.avg_tx_7d-c.avg_tx_7d_prev)/c.avg_tx_7d_prev*100 as tx_7dma_per
+    ,b.avg_tx_30d
+    ,d.avg_tx_30d_prev
+    ,(b.avg_tx_30d-d.avg_tx_30d_prev)/d.avg_tx_30d_prev*100 as tx_30dma_per
+    ,a.avg_RETURNING_USERS_7d
+    ,b.avg_RETURNING_USERS_30d
+    ,a.avg_NEW_USERS_7d
+    ,b.avg_NEW_USERS_30d
 FROM _7D a
-LEFT JOIN _30D b ON A.DATE = B.DATE AND A.NAMESPACE = B.NAMESPACE
+LEFT JOIN _30D b ON A.NAMESPACE = B.NAMESPACE
+LEFT JOIN _7D_prev c ON A.NAMESPACE = c.NAMESPACE
+LEFT JOIN _30D_prev d ON A.NAMESPACE = d.NAMESPACE

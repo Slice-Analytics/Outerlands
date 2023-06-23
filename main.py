@@ -1,4 +1,5 @@
 import pandas as pd
+import snowflake.connector
 import requests
 from requests.auth import HTTPBasicAuth
 from tqdm import tqdm
@@ -56,7 +57,7 @@ def getVolumeData():
     resp = requests.get(url).json()
     df_vol = pd.json_normalize(resp['protocols'])
     # df_vol = df_vol.rename(columns={'defillamaId': 'id', 'change_7d': 'Volume_7d', 'change_1m': 'Volume_1m'})
-    df_vol = df_vol[['defillamaId', 'change_7d', 'change_1m']]
+    df_vol = df_vol[['defillamaId', 'change_7dover7d', 'change_30dover30d']]
     # df_vol = df_vol[['id', 'Volume_7d', 'Volume_1m']]
 
     # Fetches Options Volume Data
@@ -64,11 +65,11 @@ def getVolumeData():
     resp = requests.get(url).json()
     df_vol2 = pd.json_normalize(resp['protocols'])
     # df_vol2 = df_vol2.rename(columns={'defillamaId': 'id', 'change_7d': 'Volume_7d_%', 'change_1m': 'Volume_1m_%'})
-    df_vol2 = df_vol2[['defillamaId', 'change_7d', 'change_1m']]
+    df_vol2 = df_vol2[['defillamaId', 'change_7dover7d', 'change_30dover30d']]
 
     # Combines DEX & Option Volume Data to single Dataframe
     df_vol = pd.concat([df_vol, df_vol2]).reset_index(drop=True)
-    df_vol = df_vol.rename(columns={'defillamaId': 'id', 'change_7d': 'Volume (7dma)', 'change_1m': 'Volume (1mma)'})
+    df_vol = df_vol.rename(columns={'defillamaId': 'id', 'change_7dover7d': 'Volume (7dma)', 'change_30dover30d': 'Volume (1mma)'})
     df_vol['id'].astype(int)
     df_vol['Volume (7dma)'] = df_vol['Volume (7dma)'].div(100)
     df_vol['Volume (1mma)'] = df_vol['Volume (1mma)'].div(100)
@@ -157,6 +158,34 @@ def getTokenHolderCountMetrics(tokens):
     return thcs_7day_dict, thcs_30day_dict
 
 
+def fetchSnowFlakeData():
+    #create connection
+    conn = snowflake.connector.connect(
+        user="ALLENSLICEANALYTICS",
+        password="Sl!ceJAT2022",
+        account="msb68270.us-east-1",
+        database="ARTEMIS_ANALYTICS",
+        schema="PROD"
+    )
+    try:
+        curs = conn.cursor()
+        #execute SQL statement
+        with open('DAU.sql', 'r') as f:
+            sql = f.read()
+        curs.execute(sql)
+        df = curs.fetch_pandas_all()
+    finally:
+        # Closing the connection
+        conn.close()
+        df_key = pd.read_csv('llama_art_map.csv')
+        df_key = df_key.drop(columns=['category'])
+        # ['name', 'NAMESPACE', 'FRIENDLY_NAME', 'AVG_DAU_7D', 'AVG_DAU_7D_PREV', 'DAU_7DMA_PER', 'AVG_DAU_30D', 'AVG_DAU_30D_PREV', 'DAU_30DMA_PER', 'AVG_TX_7D', 'AVG_TX_7D_PREV', 'TX_7DMA_PER', 'AVG_TX_30D', 'AVG_TX_30D_PREV', 'TX_30DMA_PER', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D']
+        results = df_key.merge(df, how='left', on='NAMESPACE').drop(columns=['NAMESPACE', 'AVG_DAU_7D', 'AVG_DAU_7D_PREV','AVG_DAU_30D', 'AVG_DAU_30D_PREV', 'AVG_TX_7D', 'AVG_TX_7D_PREV', 'AVG_TX_30D', 'AVG_TX_30D_PREV'])
+        results['FRIENDLY_NAME'] = results['FRIENDLY_NAME'].fillna('No Data')
+        results.loc[results['FRIENDLY_NAME'] != 'No Data', 'FRIENDLY_NAME'] = 1
+        results = results.rename(columns={'FRIENDLY_NAME': 'Status'})
+        return results
+
 
 if __name__ == '__main__':
     start_time = perf_counter()
@@ -222,18 +251,21 @@ if __name__ == '__main__':
     chain_stats = ["ETH" if Web3.is_address(address) else "TBD" for address in hdc]
     thcs_7day_dict, thcs_30day_dict = getTokenHolderCountMetrics(eth_tokens)
 
-    df['Holder Counts (7dma)'] = [thcs_7day_dict.get(token, None) for token in hdc]
-    df['Holder Counts (1mma)'] = [thcs_30day_dict.get(token, None) for token in hdc]
-    df['Holder Counts (7dma)'] = df['Holder Counts (7dma)'].div(100)
-    df['Holder Counts (1mma)'] = df['Holder Counts (1mma)'].div(100)
+    df['Holders (7d delta)'] = [thcs_7day_dict.get(token, None) for token in hdc]
+    df['Holders (1m delta)'] = [thcs_30day_dict.get(token, None) for token in hdc]
+    df['Holders (7d delta)'] = df['Holders (7d delta)'].div(100)
+    df['Holders (1m delta)'] = df['Holders (1m delta)'].div(100)
 
 
 
-    # TODO: Add Users metric
-    # Users of Protocol Token
-    # TBD -> Dependant on Atremis or dappradar data
-    # long term would be great to setup our own db to manage
-
+    # Users of Protocol
+    user_metrics = fetchSnowFlakeData()
+    print(f"df length b4 user metrics: {len(df)}")
+    df = df.merge(user_metrics, how='left', on='name')
+    print(f"df length after user metrics: {len(df)}")
+    # ['name', 'FRIENDLY_NAME', 'DAU_7DMA_PER', 'DAU_30DMA_PER', 'TX_7DMA_PER', 'TX_30DMA_PER', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D']
+    # TODO: Identify Missing Mappings to passively update as new protocols are created
+    df.loc[~df['Status'].isin(['1', 'No Data']), 'Status'] = 'RM'
 
     # Preparation for .csv save
     date_ts = date.today()
