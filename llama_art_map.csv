@@ -398,8 +398,41 @@ Services,ENS,ens,Ens
 Services,Gnosis DAO,gnosis_safe,Gnosis Safe
 Oracle,Chainlink,chainlink,Chainlink
 Yield,ApeCoin,apecoin,Apecoin
-Staking Pool,Aptos,,
-Services,Canto,,
-Staking Pool,Arbitrum,,
-Staking Pool,Bitcoin,,
-Staking Pool,Moonbeam,moonbeam,Moonbeam
+CEX,MEXC,mexc,Mexc global
+Dexes,SUNSwap V1,,
+Dexes,PulseX V1,,
+CEX,Okcoin,,
+Dexes,SUNSwap V2,,
+Yield,Tranchess Yield,,
+CDP,crvUSD,,
+CDP,Raft,raft,Raft
+Dexes,PearlFi,,
+Yield Aggregator,Origin Ether,origin_protocol,Origin Protocol
+CDP,Inverse Finance FiRM,inverse_finance,Inverse Finance
+Yield,PenPie,penpie,Penpie
+Algo-Stables,Frax FPI,,
+Dexes,KyberSwap Elastic,kyber_elastic,Kyber Elastic
+Yield,GND Protocol,gnd_protocol,Gnd Protocol
+Lending,Alpaca Finance 2.0,alpaca,Alpaca
+Bridge,Octus Bridge,,
+RWA,Maple RWA,maple,Maple
+Dexes,Mute.io,mute_io,Mute Io
+Yield,Asymetrix Protocol,asymmetry_finance,Asymmetry Finance
+CDP,Gravita Protocol,gravita,Gravita
+Liquidity manager,Bunni,bunni,Bunni
+Yield,Equilibria,equilibria,Equilibria
+Liquid Staking,EigenLayer,eigenlayer,Eigenlayer
+Liquidity manager,DefiEdge,defiedge,Defiedge
+Lending,Spark,spark,Spark
+Dexes,Ramses V1,ramses,Ramses
+RWA,OpenEden T-Bills,openeden,Openeden
+Lending,Burrow,,
+Yield Aggregator,Rari Capital,rari_capital,Rari Capital
+Dexes,PulseX V2,,
+Liquid Staking,NodeDAO,nodedao,Nodedao
+Dexes,Pact,,
+Liquid Staking,Tranchess Ether,,
+Dexes,LiquidSwap,liquidswap,Liquidswap
+Dexes,VyFinance Dex,,
+RWA,Solv Protocol V3,solv_protocol,Solv Protocol
+Yield,CoinFLEX,,

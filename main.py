@@ -159,6 +159,7 @@ def getTokenHolderCountMetrics(tokens):
 
 
 def fetchSnowFlakeData():
+    print('Fetching SnowFlake Data...')
     #create connection
     conn = snowflake.connector.connect(
         user="ALLENSLICEANALYTICS",
@@ -189,23 +190,24 @@ def fetchSnowFlakeData():
 
 if __name__ == '__main__':
     start_time = perf_counter()
-
     # Fetches all protocols on Defi Llama
     protocols = getProtocols()
-
     # Initializes Dataframe
     df = pd.json_normalize(protocols)
-
     # Filters Protocols based on minimum tvl requirement
     min_mcap = 100_000_000
     min_tvl = 10_000_000
     print(f'Min TVL: {min_tvl} | Min mcap: {min_mcap}')
     df = df[(df['tvl'] >= min_tvl) | (df['mcap'] >= min_mcap)]
     print(f'Protocols Tracked: {len(df)}')
-
     # Reduces Dataframe to only required Columns
     df = df[['id', 'category', 'name', 'address', 'symbol', 'tvl', 'mcap', 'slug']]
     df['id'].astype(int)
+    # Custom removals
+    # Removes 'Chains'
+    df = df[df['category'] != 'Chain']
+    # Removes Avax & Imx
+    df = df[~df['id'].isin([3139, 3140])]
 
     # Creates List of Protocal names
     slugs = df['slug'].values.tolist()
@@ -260,14 +262,14 @@ if __name__ == '__main__':
 
     # Users of Protocol
     user_metrics = fetchSnowFlakeData()
-    print(f"df length b4 user metrics: {len(df)}")
+    user_metrics.to_csv('user_metrics_1.csv', index=False)
     df = df.merge(user_metrics, how='left', on='name')
-    print(f"df length after user metrics: {len(df)}")
+    df.to_csv('protocol_1.csv')
     # ['name', 'FRIENDLY_NAME', 'DAU_7DMA_PER', 'DAU_30DMA_PER', 'TX_7DMA_PER', 'TX_30DMA_PER', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D']
-    # TODO: Identify Missing Mappings to passively update as new protocols are created
-    df.loc[~df['Status'].isin(['1', 'No Data']), 'Status'] = 'RM'
+    print(df.loc[~df['Status'].isin(['No Data', '1', 1]), 'Status'].values.tolist())
+    df.loc[~df['Status'].isin(['No Data', '1', 1]), 'Status'] = 'Requires Update'
 
-    # Preparation for .csv save
+    # # Preparation for .csv save
     date_ts = date.today()
     date_ts = str(date_ts).replace("-","")
     file_name = f"Protocols_{date_ts}.csv"

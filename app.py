@@ -1,51 +1,76 @@
 # Run this app with `python app.py` and
 # visit http://127.0.0.1:8050/ in your web browser.
 
-from dash import Dash, html, dcc, dash_table, Input, Output
+from dash import Dash, DiskcacheManager, CeleryManager, html, dcc, dash_table, Input, Output
+from dash.dash_table.Format import Format, Group, Scheme
+from datetime import timezone, datetime
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 import requests
-from datetime import timezone
-import datetime
+import os
+
+from protocols import fetchProtocolData
+from wallettracker import fetchWalletTrackerData
+
+
+if 'REDIS_URL' in os.environ:
+    # Use Redis & Celery if REDIS_URL set as an env variable
+    from celery import Celery
+    celery_app = Celery(__name__, broker=os.environ['REDIS_URL'], backend=os.environ['REDIS_URL'])
+    background_callback_manager = CeleryManager(celery_app)
+
+else:
+    # Diskcache for non-production apps when developing locally
+    import diskcache
+    cache = diskcache.Cache("./cache")
+    background_callback_manager = DiskcacheManager(cache)
 
 
 # Style Variables
 primary_color = 'rgb(247,247,247)'
-secondary_color = ''
-tertiary_color = ''
+# secondary_color = ''
+# tertiary_color = ''
 font_color = 'rgb(9,75,215)'
-
 sm_height = '30vh'
 sm_border_radius = '1vh'
 sm_background = 'rgb(224,224,255)'
-sm_style = {'background': sm_background, 'height': sm_height,
-            'border-radius': sm_border_radius, 'padding': '0', 'color': font_color}
+sm_style = {
+    'background': sm_background,
+    'height': sm_height,
+    'border-radius': sm_border_radius,
+    'padding': '0',
+    'color': font_color
+}
 H1_style = {'color': font_color}
 table_style = {'background': sm_background}
+btn_style = {'background': font_color, 'color': 'white', 'border': font_color}
 
-
-last_update = datetime.datetime.now(timezone.utc)
-print(last_update.replace(tzinfo=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()) # Returns a copy)
-last_update = last_update.replace(tzinfo=timezone.utc)
-last_update = last_update.timestamp()
-print(last_update)
-print(datetime.datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp())
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.GRID, dbc.themes.LUX])
 
 
 def checkForUpdate():
+    print('Checking required update...')
     with open('last_update.txt', 'r') as file:
         lut = float(file.read())
-    current_unix_time = datetime.datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
+
+    current_unix_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
     if current_unix_time > lut+86400:
-        print('Update Required')
-        #TODO: Trigger Update routine.
+        print('Updating Wallet Tracker')
+        fetchWalletTrackerData()
+        print('Updating Protocols')
+        fetchProtocolData()
+        print('Updating last_update.txt')
+        with open('last_update.txt', 'w') as file:
+            file_ts = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+            print(f'writing: {file_ts}')
+            file.write(str(file_ts))
+        return True
     else:
-        print('Not time to update')
-        pass
+        print('No update required')
+        return None
 
 
 def fetchEthPrice():
@@ -57,74 +82,89 @@ def fetchEthPrice():
     return r.json()["ethereum"]["usd"]
 
 
-def generateSingleMetricDelta(title_text="Example", value=400, reference=320):
-    return go.Figure(go.Indicator(
-        mode="number+delta",
-        title={"text": f"{title_text}<br><span style='font-size:0.2em'>",
-               'font_color': font_color},
-        value=float(value),
-        number={'prefix': "$", 'valueformat': '.2f', 'font_color': font_color},
-        delta={'position': "top", 'reference': reference, 'valueformat': '.2f'},
-        domain={'x': [0, 1], 'y': [0, 1]})).update_layout(paper_bgcolor='rgba(0,0,0,0)')  # "lightgray"
-
-
-def generateSingleMetric(title_text="Example", value=400):
-    return go.Figure(go.Indicator(
-        mode="number+delta",
-        title={"text": f"{title_text}<br><span style='font-size:0.2em'>",
-               'font_color': font_color},
-        value=float(value),
-        number={'prefix': "$", 'valueformat': '.2f', 'font_color': font_color},
-        # delta={'position': "top", 'reference': reference, 'valueformat': '.2f'},
-        domain={'x': [0, 1], 'y': [0, 1]})).update_layout(paper_bgcolor='rgba(0,0,0,0)')  # "lightgray"
-
-
-def generateTable():
-    print('finish generate table')
-
-
 @app.callback(
-    Output(component_id='prev_price', component_property='children'),
-    Output(component_id='new-price', component_property='children'),
-    Input('interval-component', 'n_intervals'),
-    Input(component_id='new-price', component_property='children'),
+    Output(component_id='last_updated', component_property='children'),
+    Output(component_id='protocol-table', component_property='data'),
+    Output(component_id='wt-table', component_property='data'),
+    Input('interval-component-long', 'n_intervals'),
+    Input('last_updated', component_property='children'),
+    Input(component_id='protocol-table', component_property='data'),
+    Input(component_id='wt-table', component_property='data'),
+    background=True,
+    manager=background_callback_manager,
+    running=[
+        # (Output("button_id", "disabled"), True, False),
+        (Output("btn-download-PD", "disabled"), True, False),
+        (Output("btn-download-WTD", "disabled"), True, False),
+    ],
 )
-def updateAll(n, np):
-    checkForUpdate()
-    print(np)
-    if np == 'New Price:':
-        eth_old = float(str(np).replace('New Price:', '0'))
+def updateLongPull(n, last_updated, protocol_data, wt_data):
+    status = checkForUpdate()
+    last_updated = f"Last Updated: {datetime.now(timezone.utc).replace(tzinfo=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+    if status:
+        protocol_data = pd.read_csv('Protocols_Data.csv')
+        protocol_data = protocol_data[cols_list]
+        protocol_data = protocol_data.to_dict('records')
+        wt_data = pd.read_csv('WT_Data.csv').to_dict('records')
+        print('Update Process Complete')
+        return last_updated, protocol_data, wt_data
     else:
-        eth_old = float(np.replace('New Price: ', ''))
-
-    eth_new = fetchEthPrice()
-
-    metric_list = ['L:S', 'Vault Used (%)', 'Vault Used ($)', 'Vault Available (%)', 'Vault Available ($)', '$ WL Ratio 1D', '$ WL Ratio 7D', '$ WL Ratio 30D', '$ WL Ratio All Time', '# WL Ratio 1D', '# WL Ratio 7D', '# WL Ratio 30D', '# WL Ratio All Time', '% Long 1D', '% Long 7D', '% Long 30D', '% Long All Time', '% Short 1D', '% Short 7D', '% Short 30D', '% Short All Time', 'Long WL % 1D', 'Long WL % 7D', 'Long WL % 30D', 'Long WL % All Time', 'Short WL % 1D', 'Short WL % 7D', 'Short WL % 30D', 'Short WL % All Time', '% traders > $500', '% traders > 5 times']
-
-    # figs_deltas = [generateSingleMetricDelta(
-        # item, eth_new, eth_old) for item in metric_list]
-
-    # figs = [generateSingleMetric(item, eth_new) for item in metric_list]
-
-    return f'Prev. Price: {eth_old}', f'New Price: {eth_new}'
+        print('Update Process Complete')
+        return last_updated, protocol_data, wt_data
 
 
+# @app.callback(
+#     Output(component_id='prev_price', component_property='children'),
+#     Output(component_id='new-price', component_property='children'),
+#     Input('interval-component', 'n_intervals'),
+#     Input(component_id='new-price', component_property='children'),
+# )
+# def updateAll(n, np):
+#     # print('Updating ETH Price')
+#     if np == 'New Price:':
+#         eth_old = float(str(np).replace('New Price:', '0'))
+#     else:
+#         eth_old = float(np.replace('New Price: ', ''))
+#     eth_new = fetchEthPrice()
+#     return f'Prev. Price: {eth_old}', f'New Price: {eth_new}'
 
-df = pd.read_csv(
-    'https://raw.githubusercontent.com/plotly/datasets/master/solar.csv')
-table = dash_table.DataTable(df.to_dict('records'), [
-                             {"name": i, "id": i} for i in df.columns], cell_selectable=False)
+
+# Download Callback for Protocol Data
+@app.callback(
+    Output("download-pd", "data"),
+    Input("btn-download-PD", "n_clicks"),
+    prevent_initial_call=True,
+)
+def func(n_clicks):
+    cur_date =  str(datetime.now(timezone.utc).date()).replace("-","")
+    return dcc.send_data_frame(protocol_data.to_csv, f"Protocol_Data_{cur_date}.csv", index=False)
+
+# Download Callback for Wallet Tracking Data
+@app.callback(
+    Output("download-wt", "data"),
+    Input("btn-download-WTD", "n_clicks"),
+    prevent_initial_call=True,
+)
+def func(n_clicks):
+    cur_date =  str(datetime.now(timezone.utc).date()).replace("-","")
+    return dcc.send_data_frame(wt_data.to_csv, f"WalletTracker_{cur_date}.csv")
 
 
-active_trades_data = [['Aave', 'Compound', 'Unicrypt', 'protocol1', 'protocol2'], [180, 73, 135, 469, 10], ['06/16/2023 05:33:49', '06/16/2023 05:34:49',
-                                                                                                         '06/16/2023 05:31:49', '06/16/2023 05:35:49', '06/16/2023 05:37:49'], ['1m', '5m', '1m', '2m', '15m'], ['Long', 'Short', 'Short', 'Long', 'Long']]
-protocol_data = pd.read_csv('Protocols_20230508.csv')
-# print(protocol_data.columns.tolist())
 
 money = dash_table.FormatTemplate.money(0)
+price = dash_table.FormatTemplate.money(2)
 percentage = dash_table.FormatTemplate.percentage(2)
 
-columns = [
+
+# id,category,name,address,symbol,tvl,mcap,slug,TVL (7dma),TVL (1mma),Volume (7dma),Volume (1mma),Holders (7d delta),Holders (1m delta),Status,DAU_7DMA_PER,DAU_30DMA_PER,TX_7DMA_PER,TX_30DMA_PER,AVG_RETURNING_USERS_7D,AVG_RETURNING_USERS_30D,AVG_NEW_USERS_7D,AVG_NEW_USERS_30D
+cols_list = [
+    'category', 'name', 'tvl', 'mcap',
+    'TVL (7dma)', 'TVL (1mma)', 'Volume (7dma)', 'Volume (1mma)', 'Holders (7d delta)', 'Holders (1m delta)', 'DAU_7DMA_PER', 'DAU_30DMA_PER',
+    # 'TX_7DMA_PER', 'TX_30DMA_PER', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D',
+    'Status',
+]
+protocol_data = pd.read_csv('Protocols_Data.csv')
+columns1 = [
     dict(id='category', name='category'),
     dict(id='name', name='name'),
     dict(id='tvl', name='tvl', type='numeric', format=money),
@@ -133,14 +173,16 @@ columns = [
     dict(id='TVL (1mma)', name='TVL (1mma)', type='numeric', format=percentage),
     dict(id='Volume (7dma)', name='Volume (7dma)', type='numeric', format=percentage),
     dict(id='Volume (1mma)', name='Volume (1mma)', type='numeric', format=percentage),
-    dict(id='Holder Counts (7day)', name='Holder Counts (7day)', type='numeric', format=percentage),
-    dict(id='Holder Counts (1mma)', name='Holder Counts (1mma)', type='numeric', format=percentage),
+    dict(id='Holders (7d delta)', name='Holders (7d delta)', type='numeric', format=percentage),
+    dict(id='Holders (1m delta)', name='Holders (1m delta)', type='numeric', format=percentage),
+    dict(id='DAU_7DMA_PER', name='DAU_7DMA_PER', type='numeric', format=percentage),
+    dict(id='DAU_30DMA_PER', name='DAU_30DMA_PER', type='numeric', format=percentage),
+    dict(id='Status', name='Status'),
 ]
-
-protocol_data = protocol_data[['category', 'name', 'tvl', 'mcap', 'TVL (7dma)', 'TVL (1mma)', 'Volume (7dma)', 'Volume (1mma)', 'Holder Counts (7day)', 'Holder Counts (1mma)']]
-
+protocol_data = protocol_data[cols_list]
 protocol_table = dash_table.DataTable(
-    columns=columns,
+    id='protocol-table',
+    columns=columns1,
     data=protocol_data.to_dict('records'),
     cell_selectable=False,
     sort_action='native',
@@ -163,11 +205,52 @@ protocol_table = dash_table.DataTable(
 )
 
 
-# Breakdown of vault in use: % and $ value of vault allocated for these trades, as well as % and $ amount of vault available
-metric_list = ['L:S', 'Vault Used (%)', 'Vault Used ($)', 'Vault Available (%)', 'Vault Available ($)', '$ WL Ratio 1D', '$ WL Ratio 7D', '$ WL Ratio 30D', '$ WL Ratio All Time', '# WL Ratio 1D', '# WL Ratio 7D', '# WL Ratio 30D', '# WL Ratio All Time', '% Long 1D', '% Long 7D',
-               '% Long 30D', '% Long All Time', '% Short 1D', '% Short 7D', '% Short 30D', '% Short All Time', 'Long WL % 1D', 'Long WL % 7D', 'Long WL % 30D', 'Long WL % All Time', 'Short WL % 1D', 'Short WL % 7D', 'Short WL % 30D', 'Short WL % All Time', '% traders > $500', '% traders > 5 times']
-single_metric_list = [generateSingleMetricDelta(item) for item in metric_list]
-single_metric = generateSingleMetricDelta("Long to Short Ratio")
+# Date,Symbol,Type,Total Value (USD),Token Price (USD),From Entity,To Entity,Token Liquidity (Top 20 LPs),Token Qty,From(Address),To(Address),Token Contract Address,Txn Hash,From Context,To Context
+wt_data = pd.read_csv('WT_Data.csv')
+columns1 = [
+    dict(id='Date', name='Date', type='datetime'),
+    dict(id='Symbol', name='Symbol'),
+    dict(id='Type', name='Type'),
+    dict(id='Total Value (USD)', name='Total Value (USD)', type='numeric', format=money),
+    dict(id='Token Price (USD)', name='Token Price (USD)', type='numeric', format=price),
+    dict(id='From Entity', name='From Entity'),
+    dict(id='To Entity', name='To Entity'),
+    dict(id='Token Liquidity (Top 20 LPs)', name='Token Liquidity (Top 20 LPs)', type='numeric', format=money),
+    dict(id='Token Qty', name='Token Qty', type='numeric', format=Format(
+        group=Group.yes,
+        precision=2,
+        scheme=Scheme.fixed,
+    )),
+    dict(id='From(Address)', name='From(Address)'),
+    dict(id='To(Address)', name='To(Address)'),
+    dict(id='Token Contract Address', name='Token Contract Address'),
+    dict(id='Txn Hash', name='Txn Hash'),
+    dict(id='From Context', name='From Context'),
+    dict(id='To Context', name='To Context'),
+]
+wt_table = dash_table.DataTable(
+    id='wt-table',
+    columns=columns1,
+    data=wt_data.to_dict('records'),
+    cell_selectable=False,
+    sort_action='native',
+    fixed_rows={'headers': True},
+    style_table={
+        'height': '90vh',
+    },
+    style_header={
+        'backgroundColor': font_color,
+        'color': 'rgb(255,255,255)',
+        'fontWeight': 'bold',
+        'whiteSpace': 'normal',
+    },
+    style_data={
+        'backgroundColor': sm_background,
+        'color': 'rgb(0,0,0)',
+        'whiteSpace': 'normal',
+        'height': 'auto',
+    },
+)
 
 
 section1_notes = [
@@ -187,33 +270,52 @@ section2_notes = [
 
 
 app.layout = html.Div(
-    style={'border-radius': 10, 'background': primary_color, 'color': font_color},
+    style={'border-radius': 10, 'background': primary_color, 'color': font_color, 'padding': '3vh'},
     children=[
-        html.H1("Variant", style=H1_style),
-        dbc.Container(
-            [
-                dbc.Row(html.H1("Protocol Overview", style=H1_style)),
-                dbc.Row(protocol_table),
-                html.Div(html.P(section1_notes)),
-                html.Br(),
-                dbc.Row(html.H1("Wallet Tracker", style=H1_style)),
-                dbc.Row(protocol_table),
-                html.Div(html.P(section2_notes)),
-                html.Br(),
-            ]
+        dbc.Row([
+        dbc.Col(html.H1("Variant", style=H1_style)),
+        dbc.Col(html.Div(id='last_updated', children='Last Updated: ', style=H1_style)),
+        ],
+        justify="between",
         ),
+        html.Br(),
+        dbc.Container([
+            dbc.Row(html.H1("Protocol Overview", style=H1_style)),
+            dbc.Row(protocol_table),
+            html.Div([
+                html.Button("Download Protocol Data", id="btn-download-PD", style=btn_style),
+                dcc.Download(id="download-pd")
+            ]),
+            html.Div(html.P(section1_notes)),
+            html.Br(),
+            dbc.Row(html.H1("Wallet Tracker", style=H1_style)),
+            dbc.Row(wt_table),
+            html.Div([
+                html.Button("Download Wallet Tracker Data", id="btn-download-WTD", style=btn_style),
+                dcc.Download(id="download-wt")
+            ]),
+            html.Div(html.P(section2_notes)),
+            html.Br(),
+        ]),
         html.Div(children=[
             # All elements from the top of the page
             dcc.Interval(
-                            id='interval-component',
-                            interval=15*1000,  # in milliseconds
-                            n_intervals=0,
-                        ),
-            html.H6("ETH Price", style=H1_style),
-            html.Div(id='prev_price', children='Prev. Price:', style=H1_style),
-            html.Br(),
-            html.Div(id='new-price', children='New Price:', style=H1_style),
-        ])])
+                id='interval-component-long',
+                interval=18000*1000,  # in milliseconds
+                n_intervals=0,
+            ),
+            # html.H6("ETH Price", style=H1_style),
+            # html.Div(id='prev_price', children='Prev. Price:', style=H1_style),
+            # html.Br(),
+            # html.Div(id='new-price', children='New Price:', style=H1_style),
+            # dcc.Interval(
+            #     id='interval-component',
+            #     interval=15*1000,  # in milliseconds
+            #     n_intervals=0,
+            # ),
+        ])
+    ]
+)
 
 
 if __name__ == '__main__':

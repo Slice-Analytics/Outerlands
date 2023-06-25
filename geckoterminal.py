@@ -28,8 +28,8 @@ def getTopPoolsByToken(token_address, chain="eth"):
     if response.status_code == 200:
         return response.json()
     elif response.status_code == 404:
-        print('Token for specified address not found')
-        print(f'  {token_address}')
+        # print('Token for specified address not found')
+        # print(f'  {token_address}')
         return {}
     
 
