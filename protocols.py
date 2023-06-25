@@ -6,6 +6,7 @@ from tqdm import tqdm
 from web3 import Web3
 from time import perf_counter, sleep
 from datetime import datetime, timezone, date
+import os
 
 
 def getProtocols():
@@ -87,8 +88,9 @@ def getTokenHolderCount(tokenAddress, block=0):
     headers = {
         "accept": "application/json",
     }
-
-    basic = HTTPBasicAuth('cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm', '')
+    coval_apikey = 'cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm'
+    # coval_apikey = os.getenv('covalent_api_key')
+    basic = HTTPBasicAuth(coval_apikey, '')
     response = requests.get(url, headers=headers, auth=basic)
     sleep(1)
     if response.status_code == 200:
@@ -119,6 +121,7 @@ def getTokenHolderCount(tokenAddress, block=0):
 def getBlockByTimestamp(timestamp):
     # takes timestamp and returns block height
     m_apikey = "I42NRodUvq7iUeKVvs86RZZ7sFVYXvY9K1ZKrvzin4dJZK2aJC9GXYictplGAIpr"
+    # m_apikey = os.getenv('moralis_api_key')
     headers = {"X-API-Key": m_apikey, "accept": "application/json",}
     url = f'https://deep-index.moralis.io/api/v2/dateToBlock?chain=eth&date={timestamp}'
     resp = requests.get(url, headers=headers)
@@ -165,6 +168,9 @@ def fetchSnowFlakeData():
         user="ALLENSLICEANALYTICS",
         password="Sl!ceJAT2022",
         account="msb68270.us-east-1",
+        # user=os.getenv('sn_user'),
+        # password=os.getenv('sn_password'),
+        # account=os.getenv('sn_account'),
         database="ARTEMIS_ANALYTICS",
         schema="PROD"
     )
@@ -199,8 +205,8 @@ def fetchProtocolData():
     # Initializes Dataframe
     df = pd.json_normalize(protocols)
     # Filters Protocols based on minimum tvl requirement
-    min_mcap = 800_000_000  # TODO: Reduce to 1
-    min_tvl = 80_000_000  # TODO: Reduce to 1
+    min_mcap = 100_000_000  
+    min_tvl = 10_000_000  
     print(f'Min TVL: {min_tvl} | Min mcap: {min_mcap}')
     df = df[(df['tvl'] >= min_tvl) | (df['mcap'] >= min_mcap)]
     print(f'Protocols Tracked: {len(df)}')

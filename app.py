@@ -30,8 +30,6 @@ else:
 
 # Style Variables
 primary_color = 'rgb(247,247,247)'
-# secondary_color = ''
-# tertiary_color = ''
 font_color = 'rgb(9,75,215)'
 sm_height = '30vh'
 sm_border_radius = '1vh'
@@ -55,7 +53,6 @@ def checkForUpdate():
     print('Checking required update...')
     with open('last_update.txt', 'r') as file:
         lut = float(file.read())
-
     current_unix_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
     if current_unix_time > lut+86400:
         print('Updating Wallet Tracker')
@@ -73,15 +70,6 @@ def checkForUpdate():
         return None
 
 
-def fetchEthPrice():
-    url = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd'
-    r = requests.get(url)
-    # print(r.status_code)
-    # print(r.text)
-    # print(r.json()['data']['tokenDayDatas'][0]['priceUSD'])
-    return r.json()["ethereum"]["usd"]
-
-
 @app.callback(
     Output(component_id='last_updated', component_property='children'),
     Output(component_id='protocol-table', component_property='data'),
@@ -93,7 +81,6 @@ def fetchEthPrice():
     background=True,
     manager=background_callback_manager,
     running=[
-        # (Output("button_id", "disabled"), True, False),
         (Output("btn-download-PD", "disabled"), True, False),
         (Output("btn-download-WTD", "disabled"), True, False),
     ],
@@ -111,22 +98,6 @@ def updateLongPull(n, last_updated, protocol_data, wt_data):
     else:
         print('Update Process Complete')
         return last_updated, protocol_data, wt_data
-
-
-# @app.callback(
-#     Output(component_id='prev_price', component_property='children'),
-#     Output(component_id='new-price', component_property='children'),
-#     Input('interval-component', 'n_intervals'),
-#     Input(component_id='new-price', component_property='children'),
-# )
-# def updateAll(n, np):
-#     # print('Updating ETH Price')
-#     if np == 'New Price:':
-#         eth_old = float(str(np).replace('New Price:', '0'))
-#     else:
-#         eth_old = float(np.replace('New Price: ', ''))
-#     eth_new = fetchEthPrice()
-#     return f'Prev. Price: {eth_old}', f'New Price: {eth_new}'
 
 
 # Download Callback for Protocol Data
@@ -304,15 +275,6 @@ app.layout = html.Div(
                 interval=18000*1000,  # in milliseconds
                 n_intervals=0,
             ),
-            # html.H6("ETH Price", style=H1_style),
-            # html.Div(id='prev_price', children='Prev. Price:', style=H1_style),
-            # html.Br(),
-            # html.Div(id='new-price', children='New Price:', style=H1_style),
-            # dcc.Interval(
-            #     id='interval-component',
-            #     interval=15*1000,  # in milliseconds
-            #     n_intervals=0,
-            # ),
         ])
     ]
 )

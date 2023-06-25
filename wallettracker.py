@@ -5,6 +5,7 @@ from dune_client.client import DuneClient
 from dune_client.query import Query
 import pandas as pd
 import math
+import os
 from time import perf_counter, sleep
 # import numpy as np
 from defillama import getCoinPrices
@@ -37,7 +38,8 @@ def fetchWalletTrackerData():
     }
 
 
-    API_KEY = "SzfLepMfo3nYTvLCS6cMuw6dxAmvlCq8" 
+    API_KEY = "SzfLepMfo3nYTvLCS6cMuw6dxAmvlCq8"
+    # API_KEY = os.getenv('dune_api_key')
 
     # Dune Analytics Query Section -> 
     query = Query(
