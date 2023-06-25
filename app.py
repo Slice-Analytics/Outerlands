@@ -48,6 +48,7 @@ btn_style = {'background': font_color, 'color': 'white', 'border': font_color}
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.GRID, dbc.themes.LUX])
 
+server = app.server
 
 def checkForUpdate():
     print('Checking required update...')
@@ -281,4 +282,4 @@ app.layout = html.Div(
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False)
