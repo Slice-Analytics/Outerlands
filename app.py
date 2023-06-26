@@ -88,12 +88,16 @@ def checkForUpdate():
 )
 def updateLongPull(n, last_updated, protocol_data, wt_data):
     status = checkForUpdate()
-    last_updated = f"Last Updated: {datetime.now(timezone.utc).replace(tzinfo=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+    with open('last_update.txt', 'r') as file:
+        last_updated = file.read()
+        last_updated = datetime.utcfromtimestamp(float(last_updated)+86400.0).strftime('%Y-%m-%d')
+    last_updated = f"Last Updated: {last_updated} UTC"
     if status:
-        protocol_data = pd.read_csv('Protocols_Data.csv')
+        print(f'Status: {status}')
+        protocol_data = pd.read_csv('Protocols_Data.gzip')
         protocol_data = protocol_data[cols_list]
         protocol_data = protocol_data.to_dict('records')
-        wt_data = pd.read_csv('WT_Data.csv').to_dict('records')
+        wt_data = pd.read_csv('WT_Data.gzip').to_dict('records')
         print('Update Process Complete')
         return last_updated, protocol_data, wt_data
     else:
@@ -135,7 +139,7 @@ cols_list = [
     # 'TX_7DMA_PER', 'TX_30DMA_PER', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D',
     'Status',
 ]
-protocol_data = pd.read_csv('Protocols_Data.csv')
+protocol_data = pd.read_parquet('Protocols_Data.gzip')
 columns1 = [
     dict(id='category', name='category'),
     dict(id='name', name='name'),
@@ -178,7 +182,7 @@ protocol_table = dash_table.DataTable(
 
 
 # Date,Symbol,Type,Total Value (USD),Token Price (USD),From Entity,To Entity,Token Liquidity (Top 20 LPs),Token Qty,From(Address),To(Address),Token Contract Address,Txn Hash,From Context,To Context
-wt_data = pd.read_csv('WT_Data.csv')
+wt_data = pd.read_parquet('WT_Data.gzip')
 columns1 = [
     dict(id='Date', name='Date', type='datetime'),
     dict(id='Symbol', name='Symbol'),

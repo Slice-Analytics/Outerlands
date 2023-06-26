@@ -278,7 +278,8 @@ def fetchProtocolData():
     # date_ts = date.today()
     # date_ts = str(date_ts).replace("-","")
     # file_name = f"Protocols_{date_ts}.csv"
-
-    df.to_csv('Protocols_Data.csv', index=False)
+    # df.to_csv('Protocols_Data.csv', index=False)
+    
+    df.to_parquet('Protocols_Data.gzip', index=False)
     print(f"Runtime: {(perf_counter()-start_time)/60} mintues")
 

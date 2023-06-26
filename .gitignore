@@ -2,7 +2,7 @@ venv/
 archive/
 test_data/
 .vscode/
-snowflaketut.ipynb
+*.ipynb
 __pycache__/
 __pycache__/geckoterminal.cpython-39.pyc
 cache/

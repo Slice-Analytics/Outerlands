@@ -177,7 +177,9 @@ def fetchWalletTrackerData():
     # date_ts = str(date_ts).replace("-","")
     # file_name = f"WT_{date_ts}.csv"
     # data.to_csv(file_name, index=False)
-    data.to_csv('WT_Data.csv', index=False)
+    # data.to_csv('WT_Data.csv', index=False)
+
+    data.to_parquet('WT_Data.gzip', index=False)
 
     end = perf_counter()
     print(f"Run Time: {end-start} seconds | {(end-start)/60} minutes")
