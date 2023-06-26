@@ -76,7 +76,7 @@ def fetchWalletTrackerData():
             counter += 1
             total_count += 50
     else:
-        price_results = getCoinPrices(addresses)
+        price_results = getCoinPrices(u_addresses)
         price = price_results.get('coins', 'N/A')
 
 

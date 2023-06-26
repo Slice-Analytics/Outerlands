@@ -12,14 +12,16 @@ def checkStatusCode(status_code):
 
 # /prices/current/{coins}
 def getCoinPrices(address_list, chain="ethereum", searchWidth=0):
+    print(f'addresslist length: {len(address_list)}')
     url = "https://coins.llama.fi/prices/current/"
     # EX: ethereum:0xcdf7028ceab81fa0c6971208e83fa7872994bee5,ethereum:0x31c8eacbffdd875c74b94b077895bd78cf1e64a3
     address_text =  f'{chain}:' + f',{chain}:'.join(address_list)
     url = f'{url}{address_text}'
     if searchWidth > 0:
         url = f'{url}?searchWidth={searchWidth}h'
-    print(url)
+    # print(url)
     response = requests.get(url)
+    print(f'getCoinPrices Resp{response.status_code}')
     if response.status_code == 200:
         return response.json()
     else:
