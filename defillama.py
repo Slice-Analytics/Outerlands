@@ -18,6 +18,7 @@ def getCoinPrices(address_list, chain="ethereum", searchWidth=0):
     url = f'{url}{address_text}'
     if searchWidth > 0:
         url = f'{url}?searchWidth={searchWidth}h'
+    print(url)
     response = requests.get(url)
     if response.status_code == 200:
         return response.json()

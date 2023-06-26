@@ -38,8 +38,8 @@ def fetchWalletTrackerData():
     }
 
 
-    API_KEY = "SzfLepMfo3nYTvLCS6cMuw6dxAmvlCq8"
-    # API_KEY = os.getenv('dune_api_key')
+    # API_KEY = "SzfLepMfo3nYTvLCS6cMuw6dxAmvlCq8"
+    API_KEY = os.getenv('dune_api_key')
 
     # Dune Analytics Query Section -> 
     query = Query(

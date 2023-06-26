@@ -88,8 +88,8 @@ def getTokenHolderCount(tokenAddress, block=0):
     headers = {
         "accept": "application/json",
     }
-    coval_apikey = 'cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm'
-    # coval_apikey = os.getenv('covalent_api_key')
+    # coval_apikey = 'cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm'
+    coval_apikey = os.getenv('covalent_api_key')
     basic = HTTPBasicAuth(coval_apikey, '')
     response = requests.get(url, headers=headers, auth=basic)
     sleep(1)
@@ -120,8 +120,8 @@ def getTokenHolderCount(tokenAddress, block=0):
 
 def getBlockByTimestamp(timestamp):
     # takes timestamp and returns block height
-    m_apikey = "I42NRodUvq7iUeKVvs86RZZ7sFVYXvY9K1ZKrvzin4dJZK2aJC9GXYictplGAIpr"
-    # m_apikey = os.getenv('moralis_api_key')
+    # m_apikey = "I42NRodUvq7iUeKVvs86RZZ7sFVYXvY9K1ZKrvzin4dJZK2aJC9GXYictplGAIpr"
+    m_apikey = os.getenv('moralis_api_key')
     headers = {"X-API-Key": m_apikey, "accept": "application/json",}
     url = f'https://deep-index.moralis.io/api/v2/dateToBlock?chain=eth&date={timestamp}'
     resp = requests.get(url, headers=headers)
@@ -165,12 +165,12 @@ def fetchSnowFlakeData():
     print('Fetching SnowFlake Data...')
     #create connection
     conn = snowflake.connector.connect(
-        user="ALLENSLICEANALYTICS",
-        password="Sl!ceJAT2022",
-        account="msb68270.us-east-1",
-        # user=os.getenv('sn_user'),
-        # password=os.getenv('sn_password'),
-        # account=os.getenv('sn_account'),
+        # user="ALLENSLICEANALYTICS",
+        # password="Sl!ceJAT2022",
+        # account="msb68270.us-east-1",
+        user=os.getenv('sn_user'),
+        password=os.getenv('sn_password'),
+        account=os.getenv('sn_account'),
         database="ARTEMIS_ANALYTICS",
         schema="PROD"
     )
@@ -180,9 +180,7 @@ def fetchSnowFlakeData():
         with open('DAU.sql', 'r') as f:
             sql = f.read()
         curs.execute(sql)
-        # curs.execute_async(sql)
         df = curs.fetch_pandas_all()
-        # print(len(df))
     finally:
         # Closing the connection
         conn.close()
@@ -193,7 +191,6 @@ def fetchSnowFlakeData():
         results['FRIENDLY_NAME'] = results['FRIENDLY_NAME'].fillna('No Data')
         results.loc[results['FRIENDLY_NAME'] != 'No Data', 'FRIENDLY_NAME'] = 1
         results = results.rename(columns={'FRIENDLY_NAME': 'Status'})
-        # print(results)
         return results
 
 
