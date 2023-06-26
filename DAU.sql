@@ -61,16 +61,16 @@ SELECT
     a.namespace
     ,a.avg_DAU_7d
     ,c.avg_DAU_7d_prev
-    ,(a.avg_DAU_7d-c.avg_DAU_7d_prev)/c.avg_DAU_7d_prev*100 as DAU_7dma_per
+    ,(a.avg_DAU_7d-c.avg_DAU_7d_prev)/c.avg_DAU_7d_prev as DAU_7dma
     ,b.avg_DAU_30d
     ,d.avg_DAU_30d_prev
-    ,(b.avg_DAU_30d-d.avg_DAU_30d_prev)/d.avg_DAU_30d_prev*100 as DAU_30dma_per
+    ,(b.avg_DAU_30d-d.avg_DAU_30d_prev)/d.avg_DAU_30d_prev as DAU_30dma
     ,a.avg_tx_7d
     ,c.avg_tx_7d_prev
-    ,(a.avg_tx_7d-c.avg_tx_7d_prev)/c.avg_tx_7d_prev*100 as tx_7dma_per
+    ,(a.avg_tx_7d-c.avg_tx_7d_prev)/c.avg_tx_7d_prev as tx_7dma
     ,b.avg_tx_30d
     ,d.avg_tx_30d_prev
-    ,(b.avg_tx_30d-d.avg_tx_30d_prev)/d.avg_tx_30d_prev*100 as tx_30dma_per
+    ,(b.avg_tx_30d-d.avg_tx_30d_prev)/d.avg_tx_30d_prev as tx_30dma
     ,a.avg_RETURNING_USERS_7d
     ,b.avg_RETURNING_USERS_30d
     ,a.avg_NEW_USERS_7d

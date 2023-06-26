@@ -84,11 +84,10 @@ def getTokenHolderCount(tokenAddress, block=0):
         url = f"https://api.covalenthq.com/v1/{chainName}/tokens/{tokenAddress}/token_holders_v2/"
     else:
         url = f"https://api.covalenthq.com/v1/{chainName}/tokens/{tokenAddress}/token_holders_v2/?block-height={block}"
-            
+    
     headers = {
         "accept": "application/json",
     }
-    # coval_apikey = 'cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm'
     coval_apikey = os.getenv('covalent_api_key')
     basic = HTTPBasicAuth(coval_apikey, '')
     response = requests.get(url, headers=headers, auth=basic)
@@ -120,7 +119,6 @@ def getTokenHolderCount(tokenAddress, block=0):
 
 def getBlockByTimestamp(timestamp):
     # takes timestamp and returns block height
-    # m_apikey = "I42NRodUvq7iUeKVvs86RZZ7sFVYXvY9K1ZKrvzin4dJZK2aJC9GXYictplGAIpr"
     m_apikey = os.getenv('moralis_api_key')
     headers = {"X-API-Key": m_apikey, "accept": "application/json",}
     url = f'https://deep-index.moralis.io/api/v2/dateToBlock?chain=eth&date={timestamp}'
@@ -165,9 +163,6 @@ def fetchSnowFlakeData():
     print('Fetching SnowFlake Data...')
     #create connection
     conn = snowflake.connector.connect(
-        # user="ALLENSLICEANALYTICS",
-        # password="Sl!ceJAT2022",
-        # account="msb68270.us-east-1",
         user=os.getenv('sn_user'),
         password=os.getenv('sn_password'),
         account=os.getenv('sn_account'),
@@ -189,7 +184,7 @@ def fetchSnowFlakeData():
         # ['name', 'NAMESPACE', 'FRIENDLY_NAME', 'AVG_DAU_7D', 'AVG_DAU_7D_PREV', 'DAU_7DMA_PER', 'AVG_DAU_30D', 'AVG_DAU_30D_PREV', 'DAU_30DMA_PER', 'AVG_TX_7D', 'AVG_TX_7D_PREV', 'TX_7DMA_PER', 'AVG_TX_30D', 'AVG_TX_30D_PREV', 'TX_30DMA_PER', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D']
         results = df_key.merge(df, how='left', on='NAMESPACE').drop(columns=['NAMESPACE', 'AVG_DAU_7D', 'AVG_DAU_7D_PREV','AVG_DAU_30D', 'AVG_DAU_30D_PREV', 'AVG_TX_7D', 'AVG_TX_7D_PREV', 'AVG_TX_30D', 'AVG_TX_30D_PREV'])
         results['FRIENDLY_NAME'] = results['FRIENDLY_NAME'].fillna('No Data')
-        results.loc[results['FRIENDLY_NAME'] != 'No Data', 'FRIENDLY_NAME'] = 1
+        results.loc[results['FRIENDLY_NAME'] != 'No Data', 'FRIENDLY_NAME'] = '1'
         results = results.rename(columns={'FRIENDLY_NAME': 'Status'})
         return results
 
@@ -202,8 +197,8 @@ def fetchProtocolData():
     # Initializes Dataframe
     df = pd.json_normalize(protocols)
     # Filters Protocols based on minimum tvl requirement
-    min_mcap = 100_000_000  
-    min_tvl = 10_000_000  
+    min_mcap = 100_000_000
+    min_tvl = 10_000_000
     print(f'Min TVL: {min_tvl} | Min mcap: {min_mcap}')
     df = df[(df['tvl'] >= min_tvl) | (df['mcap'] >= min_mcap)]
     print(f'Protocols Tracked: {len(df)}')
@@ -268,18 +263,19 @@ def fetchProtocolData():
 
     # Users of Protocol
     user_metrics = fetchSnowFlakeData()
+
     df = df.merge(user_metrics, how='left', on='name')
     df = df[~df['id'].isin([3139, 3140])]
-    # ['name', 'FRIENDLY_NAME', 'DAU_7DMA_PER', 'DAU_30DMA_PER', 'TX_7DMA_PER', 'TX_30DMA_PER', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D']
-    print(df.loc[~df['Status'].isin(['No Data', '1', 1]), 'Status'].values.tolist())
-    df.loc[~df['Status'].isin(['No Data', '1', 1]), 'Status'] = 'Requires Update'
+    # ['name', 'FRIENDLY_NAME', 'DAU_7DMA_', 'DAU_30DMA', 'TX_7DMA', 'TX_30DMA', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D']
+    print(df.loc[~df['Status'].isin(['No Data', '1']), 'Status'].values.tolist())
+    df.loc[~df['Status'].isin(['No Data', '1']), 'Status'] = 'Requires Update'
 
     # # Preparation for .csv save
     # date_ts = date.today()
     # date_ts = str(date_ts).replace("-","")
     # file_name = f"Protocols_{date_ts}.csv"
     # df.to_csv('Protocols_Data.csv', index=False)
-    
+
     df.to_parquet('Protocols_Data.gzip', index=False)
     print(f"Runtime: {(perf_counter()-start_time)/60} mintues")
 

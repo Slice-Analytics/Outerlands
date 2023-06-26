@@ -28,6 +28,17 @@ else:
     background_callback_manager = DiskcacheManager(cache)
 
 
+# TODO: Delete for production code
+# Set Environment Variables for testing
+# import os
+# os.environ["covalent_api_key"] = 'cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm'
+# os.environ["moralis_api_key"] = "I42NRodUvq7iUeKVvs86RZZ7sFVYXvY9K1ZKrvzin4dJZK2aJC9GXYictplGAIpr"
+# os.environ["dune_api_key"] = 'SzfLepMfo3nYTvLCS6cMuw6dxAmvlCq8'
+# os.environ["sn_user"] = 'ALLENSLICEANALYTICS'
+# os.environ["sn_password"] = 'Sl!ceJAT2022'
+# os.environ["sn_account"] = 'msb68270.us-east-1'
+
+
 # Style Variables
 primary_color = 'rgb(247,247,247)'
 font_color = 'rgb(9,75,215)'
@@ -57,7 +68,7 @@ def checkForUpdate():
     current_unix_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
     if current_unix_time > lut+86400:
         print('Updating Wallet Tracker')
-        fetchWalletTrackerData()
+        # fetchWalletTrackerData()
         print('Updating Protocols')
         fetchProtocolData()
         print('Updating last_update.txt')
@@ -90,14 +101,14 @@ def updateLongPull(n, last_updated, protocol_data, wt_data):
     status = checkForUpdate()
     with open('last_update.txt', 'r') as file:
         last_updated = file.read()
-        last_updated = datetime.utcfromtimestamp(float(last_updated)+86400.0).strftime('%Y-%m-%d')
+        last_updated = datetime.utcfromtimestamp(float(last_updated)).strftime('%Y-%m-%d')
     last_updated = f"Last Updated: {last_updated} UTC"
     if status:
         print(f'Status: {status}')
-        protocol_data = pd.read_csv('Protocols_Data.gzip')
+        protocol_data = pd.read_parquet('Protocols_Data.gzip')
         protocol_data = protocol_data[cols_list]
         protocol_data = protocol_data.to_dict('records')
-        wt_data = pd.read_csv('WT_Data.gzip').to_dict('records')
+        wt_data = pd.read_parquet('WT_Data.gzip').to_dict('records')
         print('Update Process Complete')
         return last_updated, protocol_data, wt_data
     else:
@@ -135,8 +146,8 @@ percentage = dash_table.FormatTemplate.percentage(2)
 # id,category,name,address,symbol,tvl,mcap,slug,TVL (7dma),TVL (1mma),Volume (7dma),Volume (1mma),Holders (7d delta),Holders (1m delta),Status,DAU_7DMA_PER,DAU_30DMA_PER,TX_7DMA_PER,TX_30DMA_PER,AVG_RETURNING_USERS_7D,AVG_RETURNING_USERS_30D,AVG_NEW_USERS_7D,AVG_NEW_USERS_30D
 cols_list = [
     'category', 'name', 'tvl', 'mcap',
-    'TVL (7dma)', 'TVL (1mma)', 'Volume (7dma)', 'Volume (1mma)', 'Holders (7d delta)', 'Holders (1m delta)', 'DAU_7DMA_PER', 'DAU_30DMA_PER',
-    # 'TX_7DMA_PER', 'TX_30DMA_PER', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D',
+    'TVL (7dma)', 'TVL (1mma)', 'Volume (7dma)', 'Volume (1mma)', 'Holders (7d delta)', 'Holders (1m delta)', 'DAU_7DMA', 'DAU_30DMA',
+    # 'TX_7DMA', 'TX_30DMA', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D',
     'Status',
 ]
 protocol_data = pd.read_parquet('Protocols_Data.gzip')
@@ -151,8 +162,8 @@ columns1 = [
     dict(id='Volume (1mma)', name='Volume (1mma)', type='numeric', format=percentage),
     dict(id='Holders (7d delta)', name='Holders (7d delta)', type='numeric', format=percentage),
     dict(id='Holders (1m delta)', name='Holders (1m delta)', type='numeric', format=percentage),
-    dict(id='DAU_7DMA_PER', name='DAU_7DMA_PER', type='numeric', format=percentage),
-    dict(id='DAU_30DMA_PER', name='DAU_30DMA_PER', type='numeric', format=percentage),
+    dict(id='DAU_7DMA', name='DAU_7DMA', type='numeric', format=percentage),
+    dict(id='DAU_30DMA', name='DAU_30DMA', type='numeric', format=percentage),
     dict(id='Status', name='Status'),
 ]
 protocol_data = protocol_data[cols_list]
@@ -165,6 +176,7 @@ protocol_table = dash_table.DataTable(
     fixed_rows={'headers': True},
     style_table={
         'height': '90vh',
+        'width': '85vw',
     },
     style_header={
         'backgroundColor': font_color,
@@ -213,6 +225,7 @@ wt_table = dash_table.DataTable(
     fixed_rows={'headers': True},
     style_table={
         'height': '90vh',
+        'width': '85vw',
     },
     style_header={
         'backgroundColor': font_color,
