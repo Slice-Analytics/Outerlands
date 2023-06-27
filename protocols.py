@@ -290,7 +290,7 @@ def fetchProtocolData():
     user_metrics = fetchSnowFlakeData()
     user_metrics = user_metrics.rename(columns={'DAU_7DMA': 'DAU (7dma)', 'DAU_30DMA': 'DAU (1mma)',})
     df = df.merge(user_metrics, how='left', on='name')
-    df = df[~df['id'].isin([3139, 3140, '3139', '3140'])]
+    df = df[~df['id'].isin([1531, 3139, 3140, '1531','3139', '3140'])]
     # ['name', 'FRIENDLY_NAME', 'DAU_7DMA_', 'DAU_30DMA', 'TX_7DMA', 'TX_30DMA', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D']
     print(df.loc[~df['Status'].isin(['No Data', '1']), 'Status'].values.tolist())
     df.loc[~df['Status'].isin(['No Data', '1']), 'Status'] = 'Requires Update'
