@@ -10,6 +10,21 @@ from time import perf_counter, sleep
 # import numpy as np
 from defillama import getCoinPrices
 from geckoterminal import getTopPoolsByToken
+from supabase import create_client
+
+
+
+def updateWTsupabase(dfwt = pd.DataFrame()):
+    dfwt = dfwt.reset_index().fillna('')
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY_SECRET")
+    supabase = create_client(url, key)
+    # Removes all table data
+    supabase.table('WT_Data').delete().neq('index', -1).execute()
+    # Inserts Data
+    supabase.table('WT_Data').insert(dfwt.to_dict(orient='records')).execute()
+    return None
+
 
 def fetchWalletTrackerData():
     start = perf_counter()
@@ -39,7 +54,7 @@ def fetchWalletTrackerData():
 
     API_KEY = os.getenv('dune_api_key')
 
-    # Dune Analytics Query Section -> 
+    # Dune Analytics Query Section
     query = Query(
         name="V_01_task_2",
         query_id=2448228,
@@ -52,8 +67,7 @@ def fetchWalletTrackerData():
     response = dune.refresh(query)
     data = pd.DataFrame(response.result.rows)
 
-
-    # Price/Symbol/Decimals Data Section -> 
+    # Price/Symbol/Decimals Data Section
     addresses_df = data['contract_address'].tolist()
     indices = [i for i, x in enumerate(addresses_df) if x == "0x"]
     # Replaces ETH contract "Ox" for WETH contract for API intergration purposes
@@ -109,7 +123,7 @@ def fetchWalletTrackerData():
 
     liquidity_list = [liquidity_dict.get(address, 0) for address in addresses]
 
-    data['Token Liquidity (Top 20 LPs)'] = liquidity_list
+    data['Token Liquidity'] = liquidity_list
 
 
     # Add Labels Section ->
@@ -157,27 +171,20 @@ def fetchWalletTrackerData():
     data['To Context'] = to_context_list     
 
 
-    # Calc token value and amount section ->
+    # Calc token value and amount section
     data = data.assign(token_amount=data['value'].astype(float) / (10 ** data['decimal']))
     data = data.assign(token_value=data['token_amount'] * data['Token Price (USD)'])
     data = data.rename(columns={"token_amount": "Token Qty", "token_value": "Total Value (USD)", "evt_tx_hash": "Txn Hash", "evt_block_time": "Date", "from": "From(Address)", "to": "To(Address)", "contract_address": "Token Contract Address"})
     data = data[['Date', 'Symbol', 'Type', 'Total Value (USD)', 'Token Price (USD)', 'From Entity',	'To Entity',
-                'Token Liquidity (Top 20 LPs)', 'Token Qty', 'From(Address)', 'To(Address)', 'Token Contract Address', 'Txn Hash', 'From Context', 'To Context', 'value', 'decimal']]
+                'Token Liquidity', 'Token Qty', 'From(Address)', 'To(Address)', 'Token Contract Address', 'Txn Hash', 'From Context', 'To Context', 'value', 'decimal']]
 
-    # TODO: Properly Open & merge dataframe to database
-    # db_df = pd.read_csv('walletTrackerDB.csv')
-    # db_df = pd.concat([db_df, data])
-    # db_df = db_df.drop_duplicates()
-    # db_df.to_csv('walletTrackerDB.csv', index=False)
 
     data = data.drop(columns=['value', 'decimal'])
-    # date_ts = date.today()
-    # date_ts = str(date_ts).replace("-","")
-    # file_name = f"WT_{date_ts}.csv"
-    # data.to_csv(file_name, index=False)
-    # data.to_csv('WT_Data.csv', index=False)
 
-    data.to_parquet('WT_Data.gzip', index=False)
+    # data.to_parquet('WT_Data.gzip', index=False)
+    
+    # Posts data to supabase WT_Data table
+    updateWTsupabase(data)
 
     end = perf_counter()
     print(f"Run Time: {end-start} seconds | {(end-start)/60} minutes")

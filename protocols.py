@@ -6,7 +6,32 @@ from tqdm import tqdm
 from web3 import Web3
 from time import perf_counter, sleep
 from datetime import datetime, timezone, date
+from supabase import create_client
 import os
+
+
+def updatePDsupabase(df = pd.DataFrame()):
+    df['DAU (7dma)'] = df['DAU (7dma)'].astype(float)
+    df['DAU (1mma)'] = df['DAU (1mma)'].astype(float)
+    df['TX_7DMA'] = df['TX_7DMA'].astype(float)
+    df['TX_30DMA'] = df['TX_30DMA'].astype(float)
+    df['AVG_RETURNING_USERS_7D'] = df['AVG_RETURNING_USERS_7D'].astype(float)
+    df['AVG_RETURNING_USERS_30D'] = df['AVG_RETURNING_USERS_30D'].astype(float)
+    df['AVG_NEW_USERS_7D'] = df['AVG_NEW_USERS_7D'].astype(float)
+    df['AVG_NEW_USERS_30D'] = df['AVG_NEW_USERS_30D'].astype(float)
+    df = df.fillna('')
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY_SECRET")
+    supabase = create_client(url, key)
+
+    # Removes all table data
+    supabase.table('Protocol_Data').delete().neq('id', -1).execute()
+
+    # Inserts Data
+    supabase.table('Protocol_Data').insert(df.to_dict(orient='records')).execute()
+
+    return None
 
 
 def getProtocols():
@@ -113,8 +138,8 @@ def getTokenHolderCount(tokenAddress, block=0):
         503: "Server Errors: Something went wrong on Covalent's servers.",
         }
         print(f'Response Status Code = {response.status_code}: {covalent_status_dict[response.status_code]}')
-        # TODO: Replace quit() with a proper error handling if possible
-        quit()
+        # # TODO: Replace quit() with a proper error handling if possible
+        # quit()
 
 
 def getBlockByTimestamp(timestamp):
@@ -255,27 +280,24 @@ def fetchProtocolData():
     # chain_stats = ["ETH" if Web3.is_address(address) else "TBD" for address in hdc]
     thcs_7day_dict, thcs_30day_dict = getTokenHolderCountMetrics(eth_tokens)
 
-    df['Holders (7d delta)'] = [thcs_7day_dict.get(token, None) for token in hdc]
-    df['Holders (1m delta)'] = [thcs_30day_dict.get(token, None) for token in hdc]
-    df['Holders (7d delta)'] = df['Holders (7d delta)'].div(100)
-    df['Holders (1m delta)'] = df['Holders (1m delta)'].div(100)
+    df['Holders (7dd)'] = [thcs_7day_dict.get(token, None) for token in hdc]
+    df['Holders (1md)'] = [thcs_30day_dict.get(token, None) for token in hdc]
+    df['Holders (7dd)'] = df['Holders (7dd)'].div(100)
+    df['Holders (1md)'] = df['Holders (1md)'].div(100)
 
 
     # Users of Protocol
     user_metrics = fetchSnowFlakeData()
-
+    user_metrics = user_metrics.rename(columns={'DAU_7DMA': 'DAU (7dma)', 'DAU_30DMA': 'DAU (1mma)',})
     df = df.merge(user_metrics, how='left', on='name')
-    df = df[~df['id'].isin([3139, 3140])]
+    df = df[~df['id'].isin([3139, 3140, '3139', '3140'])]
     # ['name', 'FRIENDLY_NAME', 'DAU_7DMA_', 'DAU_30DMA', 'TX_7DMA', 'TX_30DMA', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D']
     print(df.loc[~df['Status'].isin(['No Data', '1']), 'Status'].values.tolist())
     df.loc[~df['Status'].isin(['No Data', '1']), 'Status'] = 'Requires Update'
+    # df.to_parquet('Protocols_Data.gzip', index=False)
 
-    # # Preparation for .csv save
-    # date_ts = date.today()
-    # date_ts = str(date_ts).replace("-","")
-    # file_name = f"Protocols_{date_ts}.csv"
-    # df.to_csv('Protocols_Data.csv', index=False)
+    # Posts data to supabase WT_Data table
+    updatePDsupabase(df)
 
-    df.to_parquet('Protocols_Data.gzip', index=False)
     print(f"Runtime: {(perf_counter()-start_time)/60} mintues")
 

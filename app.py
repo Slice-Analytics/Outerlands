@@ -4,6 +4,7 @@
 from dash import Dash, DiskcacheManager, CeleryManager, html, dcc, dash_table, Input, Output
 from dash.dash_table.Format import Format, Group, Scheme
 from datetime import timezone, datetime
+from supabase import create_client
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import plotly.express as px
@@ -30,14 +31,15 @@ else:
 
 # TODO: Delete for production code
 # Set Environment Variables for testing
-# import os
-# os.environ["covalent_api_key"] = 'cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm'
-# os.environ["moralis_api_key"] = "I42NRodUvq7iUeKVvs86RZZ7sFVYXvY9K1ZKrvzin4dJZK2aJC9GXYictplGAIpr"
-# os.environ["dune_api_key"] = 'SzfLepMfo3nYTvLCS6cMuw6dxAmvlCq8'
-# os.environ["sn_user"] = 'ALLENSLICEANALYTICS'
-# os.environ["sn_password"] = 'Sl!ceJAT2022'
-# os.environ["sn_account"] = 'msb68270.us-east-1'
-
+import os
+os.environ["covalent_api_key"] = 'cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm'
+os.environ["moralis_api_key"] = "I42NRodUvq7iUeKVvs86RZZ7sFVYXvY9K1ZKrvzin4dJZK2aJC9GXYictplGAIpr"
+os.environ["dune_api_key"] = 'SzfLepMfo3nYTvLCS6cMuw6dxAmvlCq8'
+os.environ["sn_user"] = 'ALLENSLICEANALYTICS'
+os.environ["sn_password"] = 'Sl!ceJAT2022'
+os.environ["sn_account"] = 'msb68270.us-east-1'
+os.environ["SUPABASE_URL"] = 'https://bakzzafficbpnhbssftc.supabase.co'
+os.environ["SUPABASE_KEY_SECRET"] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJha3p6YWZmaWNicG5oYnNzZnRjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY4Nzc4NDg3MywiZXhwIjoyMDAzMzYwODczfQ.wJZJTSEXojgoStWH4mqcK3Q_BOwV3l07Z06dlX9qgRk'
 
 # Style Variables
 primary_color = 'rgb(247,247,247)'
@@ -61,21 +63,61 @@ app = Dash(__name__, external_stylesheets=[dbc.themes.GRID, dbc.themes.LUX])
 
 server = app.server
 
+
+def fetchSupabaseLastUpdate():
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY_SECRET")
+    supabase = create_client(url, key)
+    data, count = supabase.table('lastupdated').select("*").execute()
+    return float(data[1][0]['last_updated'])
+
+
+def updateLUsupabase():
+    lut = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY_SECRET")
+    supabase = create_client(url, key)
+
+   # Removes all table data
+    supabase.table('lastupdated').delete().neq('id', -1).execute()
+
+    # Inserts Data
+    supabase.table('lastupdated').insert({'id': 0, 'last_updated': lut}).execute()
+
+    return None
+
+
+def fetchSupabaseProtocolData():
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY_SECRET")
+    supabase = create_client(url, key)
+    data, count = supabase.table('Protocol_Data').select("*").execute()
+    pd_sb = pd.DataFrame(data[1])
+    return pd_sb
+
+
+def fetchSupabaseWTData():
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY_SECRET")
+    supabase = create_client(url, key)
+    data, count = supabase.table('WT_Data').select("*").execute()
+    wt_sb = pd.DataFrame(data[1])
+    return wt_sb
+
+
 def checkForUpdate():
     print('Checking required update...')
-    with open('last_update.txt', 'r') as file:
-        lut = float(file.read())
+
+    lut = fetchSupabaseLastUpdate()
     current_unix_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
     if current_unix_time > lut+86400:
         print('Updating Wallet Tracker')
-        # fetchWalletTrackerData()
+        fetchWalletTrackerData()
         print('Updating Protocols')
         fetchProtocolData()
-        print('Updating last_update.txt')
-        with open('last_update.txt', 'w') as file:
-            file_ts = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
-            print(f'writing: {file_ts}')
-            file.write(str(file_ts))
+        print('Updating lastupdate tracker')
+        updateLUsupabase()
         return True
     else:
         print('No update required')
@@ -99,16 +141,17 @@ def checkForUpdate():
 )
 def updateLongPull(n, last_updated, protocol_data, wt_data):
     status = checkForUpdate()
-    with open('last_update.txt', 'r') as file:
-        last_updated = file.read()
-        last_updated = datetime.utcfromtimestamp(float(last_updated)).strftime('%Y-%m-%d')
+    last_updated = fetchSupabaseLastUpdate()
+    last_updated = datetime.utcfromtimestamp(float(last_updated)).strftime('%Y-%m-%d')
     last_updated = f"Last Updated: {last_updated} UTC"
     if status:
         print(f'Status: {status}')
-        protocol_data = pd.read_parquet('Protocols_Data.gzip')
-        protocol_data = protocol_data[cols_list]
+        protocol_data = fetchSupabaseProtocolData()
+        protocol_data[numeric_pd] = protocol_data[numeric_pd].apply(pd.to_numeric)
         protocol_data = protocol_data.to_dict('records')
-        wt_data = pd.read_parquet('WT_Data.gzip').to_dict('records')
+        wt_data = fetchSupabaseWTData()
+        wt_data[numeric_wt] = wt_data[numeric_wt].apply(pd.to_numeric)
+        wt_data = wt_data.to_dict('records')
         print('Update Process Complete')
         return last_updated, protocol_data, wt_data
     else:
@@ -143,14 +186,15 @@ price = dash_table.FormatTemplate.money(2)
 percentage = dash_table.FormatTemplate.percentage(2)
 
 
-# id,category,name,address,symbol,tvl,mcap,slug,TVL (7dma),TVL (1mma),Volume (7dma),Volume (1mma),Holders (7d delta),Holders (1m delta),Status,DAU_7DMA_PER,DAU_30DMA_PER,TX_7DMA_PER,TX_30DMA_PER,AVG_RETURNING_USERS_7D,AVG_RETURNING_USERS_30D,AVG_NEW_USERS_7D,AVG_NEW_USERS_30D
 cols_list = [
     'category', 'name', 'tvl', 'mcap',
-    'TVL (7dma)', 'TVL (1mma)', 'Volume (7dma)', 'Volume (1mma)', 'Holders (7d delta)', 'Holders (1m delta)', 'DAU_7DMA', 'DAU_30DMA',
+    'TVL (7dma)', 'TVL (1mma)', 'Volume (7dma)', 'Volume (1mma)', 'Holders (7dd)', 'Holders (1md)', 'DAU (7dma)', 'DAU (1mma)',
     # 'TX_7DMA', 'TX_30DMA', 'AVG_RETURNING_USERS_7D', 'AVG_RETURNING_USERS_30D', 'AVG_NEW_USERS_7D', 'AVG_NEW_USERS_30D',
     'Status',
 ]
-protocol_data = pd.read_parquet('Protocols_Data.gzip')
+protocol_data = fetchSupabaseProtocolData()
+numeric_pd = ['tvl', 'mcap', 'TVL (7dma)', 'TVL (1mma)', 'Volume (7dma)', 'Volume (1mma)', 'Holders (7dd)', 'Holders (1md)', 'DAU (7dma)', 'DAU (1mma)'] 
+protocol_data[numeric_pd] = protocol_data[numeric_pd].apply(pd.to_numeric)
 columns1 = [
     dict(id='category', name='category'),
     dict(id='name', name='name'),
@@ -160,10 +204,10 @@ columns1 = [
     dict(id='TVL (1mma)', name='TVL (1mma)', type='numeric', format=percentage),
     dict(id='Volume (7dma)', name='Volume (7dma)', type='numeric', format=percentage),
     dict(id='Volume (1mma)', name='Volume (1mma)', type='numeric', format=percentage),
-    dict(id='Holders (7d delta)', name='Holders (7d delta)', type='numeric', format=percentage),
-    dict(id='Holders (1m delta)', name='Holders (1m delta)', type='numeric', format=percentage),
-    dict(id='DAU_7DMA', name='DAU_7DMA', type='numeric', format=percentage),
-    dict(id='DAU_30DMA', name='DAU_30DMA', type='numeric', format=percentage),
+    dict(id='Holders (7dd)', name='Holders (7dd)', type='numeric', format=percentage),
+    dict(id='Holders (1md)', name='Holders (1md)', type='numeric', format=percentage),
+    dict(id='DAU (7dma)', name='DAU (7dma)', type='numeric', format=percentage),
+    dict(id='DAU (1mma)', name='DAU (1mma)', type='numeric', format=percentage),
     dict(id='Status', name='Status'),
 ]
 protocol_data = protocol_data[cols_list]
@@ -183,18 +227,25 @@ protocol_table = dash_table.DataTable(
         'color': 'rgb(255,255,255)',
         'fontWeight': 'bold',
         'whiteSpace': 'normal',
+        'width': 'auto',
+        'minWidth': '5vw',
     },
     style_data={
         'backgroundColor': sm_background,
         'color': 'rgb(0,0,0)',
         'whiteSpace': 'normal',
         'height': 'auto',
+        'overflow': 'hidden',
+        'textOverflow': 'ellipsis',
+        'maxWidth': '10vw',
+        'minWidth': '5vw',
     },
 )
 
 
-# Date,Symbol,Type,Total Value (USD),Token Price (USD),From Entity,To Entity,Token Liquidity (Top 20 LPs),Token Qty,From(Address),To(Address),Token Contract Address,Txn Hash,From Context,To Context
-wt_data = pd.read_parquet('WT_Data.gzip')
+wt_data = fetchSupabaseWTData()
+numeric_wt = ['Total Value (USD)', 'Token Price (USD)', 'Token Liquidity', 'Token Qty']
+wt_data[numeric_wt] = wt_data[numeric_wt].apply(pd.to_numeric)
 columns1 = [
     dict(id='Date', name='Date', type='datetime'),
     dict(id='Symbol', name='Symbol'),
@@ -203,7 +254,7 @@ columns1 = [
     dict(id='Token Price (USD)', name='Token Price (USD)', type='numeric', format=price),
     dict(id='From Entity', name='From Entity'),
     dict(id='To Entity', name='To Entity'),
-    dict(id='Token Liquidity (Top 20 LPs)', name='Token Liquidity (Top 20 LPs)', type='numeric', format=money),
+    dict(id='Token Liquidity', name='Token Liquidity', type='numeric', format=money),
     dict(id='Token Qty', name='Token Qty', type='numeric', format=Format(
         group=Group.yes,
         precision=2,
@@ -232,12 +283,19 @@ wt_table = dash_table.DataTable(
         'color': 'rgb(255,255,255)',
         'fontWeight': 'bold',
         'whiteSpace': 'normal',
+        'height': 'auto',
+        'width': 'auto',
+        'minWidth': '5vw',
     },
     style_data={
         'backgroundColor': sm_background,
         'color': 'rgb(0,0,0)',
         'whiteSpace': 'normal',
         'height': 'auto',
+        'overflow': 'hidden',
+        'textOverflow': 'ellipsis',
+        'maxWidth': '10vw',
+        'minWidth': '5vw',
     },
 )
 
@@ -245,21 +303,35 @@ wt_table = dash_table.DataTable(
 section1_notes = [
     "Notes:",
     html.Br(),
+    "- Search Parameters: mcap > $100M and TVL > $10M",
+    html.Br(),
     "- MCAP refers to a protocol's token. If $0, then the protocol has no token or no token data.",
     html.Br(),
-    "- 7DMA: 7-Day Moving Average",
+    "- DAU: Daily Active User",
     html.Br(),
-    "- 1MMA: 1-Month Moving Average",
+    "- 7dma: 7-Day Moving Average",
+    html.Br(),
+    "- 1mma: 1-Month Moving Average",
+    html.Br(),
+    "- 7dd: Total % change over the last 7 days",
+    html.Br(),
+    "- 1md: Total % change over the last month ",
 ]
 section2_notes = [
     "Notes:",
     html.Br(),
-    "***Add notes for this section***",
+    "- To & From Entities are based on the Variant provided list",
+    html.Br(),
+    "- Token Liquidity is calculated by summing the top 20 liquidity pools",
+    # html.Br(),
+    # "***Add notes for this section***",
+    # html.Br(),
+    # "TODO: List: Hyperlinks",
 ]
 
 
 app.layout = html.Div(
-    style={'border-radius': 10, 'background': primary_color, 'color': font_color, 'padding': '3vh'},
+    style={'background': primary_color, 'color': font_color, 'padding': '3.5vh'},
     children=[
         dbc.Row([
         dbc.Col(html.H1("Variant", style=H1_style)),
