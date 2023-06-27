@@ -29,18 +29,6 @@ else:
     background_callback_manager = DiskcacheManager(cache)
 
 
-# TODO: Delete for production code
-# Set Environment Variables for testing
-import os
-os.environ["covalent_api_key"] = 'cqt_rQVhYWhkHKYBPwPGYqQPKtDKbMCm'
-os.environ["moralis_api_key"] = "I42NRodUvq7iUeKVvs86RZZ7sFVYXvY9K1ZKrvzin4dJZK2aJC9GXYictplGAIpr"
-os.environ["dune_api_key"] = 'SzfLepMfo3nYTvLCS6cMuw6dxAmvlCq8'
-os.environ["sn_user"] = 'ALLENSLICEANALYTICS'
-os.environ["sn_password"] = 'Sl!ceJAT2022'
-os.environ["sn_account"] = 'msb68270.us-east-1'
-os.environ["SUPABASE_URL"] = 'https://bakzzafficbpnhbssftc.supabase.co'
-os.environ["SUPABASE_KEY_SECRET"] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJha3p6YWZmaWNicG5oYnNzZnRjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY4Nzc4NDg3MywiZXhwIjoyMDAzMzYwODczfQ.wJZJTSEXojgoStWH4mqcK3Q_BOwV3l07Z06dlX9qgRk'
-
 # Style Variables
 primary_color = 'rgb(247,247,247)'
 font_color = 'rgb(9,75,215)'
