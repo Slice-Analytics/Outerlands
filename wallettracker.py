@@ -52,12 +52,12 @@ def fetchWalletTrackerData():
         '0x10e7d26a02bd124250ea00c41dcd16fc791ccd78': ['Messi', 'Notable Individual'],
     }
 
-    API_KEY = os.getenv('dune_api_key')
+    API_KEY = os.getenv('DUNE_API_KEY_UC')
 
     # Dune Analytics Query Section
     query = Query(
-        name="V_01_task_2",
-        query_id=2448228,
+        name="G_WT_results",
+        query_id=2758194,
         params=[
             QueryParameter.number_type(name="days_ago", value=1),
         ],

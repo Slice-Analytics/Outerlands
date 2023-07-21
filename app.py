@@ -16,12 +16,15 @@ from protocols import fetchProtocolData
 from wallettracker import fetchWalletTrackerData
 
 
+# from dotenv import load_dotenv
+# load_dotenv()  # take environment variables from .env.
+
+
 if 'REDIS_URL' in os.environ:
     # Use Redis & Celery if REDIS_URL set as an env variable
     from celery import Celery
     celery_app = Celery(__name__, broker=os.environ['REDIS_URL'], backend=os.environ['REDIS_URL'])
     background_callback_manager = CeleryManager(celery_app)
-
 else:
     # Diskcache for non-production apps when developing locally
     import diskcache
@@ -44,7 +47,7 @@ sm_style = {
 }
 H1_style = {'color': font_color}
 table_style = {'background': sm_background}
-btn_style = {'background': font_color, 'color': 'white', 'border': font_color}
+btn_style = {'background': font_color, 'color': 'white', 'border': font_color,}
 
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.GRID, dbc.themes.LUX])
@@ -321,31 +324,41 @@ section2_notes = [
 app.layout = html.Div(
     style={'background': primary_color, 'color': font_color, 'padding': '3.5vh'},
     children=[
-        dbc.Row([
-        dbc.Col(html.H1("Variant", style=H1_style)),
-        dbc.Col(html.Div(id='last_updated', children='Last Updated: ', style=H1_style)),
-        ],
-        justify="between",
+        dbc.Row(
+            [
+                dbc.Col([html.H1("Variant", style=H1_style)]),
+                dbc.Col([html.Div(id='last_updated', children='Last Updated: ', style=H1_style)]),
+            ],
+            justify="around",
         ),
         html.Br(),
-        dbc.Container([
-            dbc.Row(html.H1("Protocol Overview", style=H1_style)),
-            dbc.Row(protocol_table),
-            html.Div([
-                html.Button("Download Protocol Data", id="btn-download-PD", style=btn_style),
-                dcc.Download(id="download-pd")
-            ]),
-            html.Div(html.P(section1_notes)),
-            html.Br(),
-            dbc.Row(html.H1("Wallet Tracker", style=H1_style)),
-            dbc.Row(wt_table),
-            html.Div([
-                html.Button("Download Wallet Tracker Data", id="btn-download-WTD", style=btn_style),
-                dcc.Download(id="download-wt")
-            ]),
-            html.Div(html.P(section2_notes)),
-            html.Br(),
-        ]),
+        dbc.Container(
+            [
+                dbc.Row(html.H2("Protocol Overview", style=H1_style)),
+                dbc.Row(protocol_table),
+                dbc.Row(
+                    [
+                        html.Button("Download Protocol Data", id="btn-download-PD", style=btn_style),
+                        dcc.Download(id="download-pd"),
+                    ],
+                    justify='end'
+                ),
+                html.Div(html.P(section1_notes, style={'padding': '2vh'})),
+                html.Br(),
+                dbc.Row(html.H2("Wallet Tracker", style=H1_style)),
+                dbc.Row(wt_table),
+                html.Div([
+                    html.Button("Download Wallet Tracker Data", id="btn-download-WTD", style=btn_style),
+                    dcc.Download(id="download-wt")
+                ]),
+                html.Div(html.P(section2_notes, style={'padding': '2vh'})),
+                html.A(
+                    "Powered by Slice Analytics",
+                    href="https://www.sliceanalytics.xyz/",
+                    style={'color': 'rgb(0,0,0)', 'padding': '4vh'},
+                ),
+            ]
+        ),
         html.Div(children=[
             # All elements from the top of the page
             dcc.Interval(

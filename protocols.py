@@ -113,7 +113,7 @@ def getTokenHolderCount(tokenAddress, block=0):
     headers = {
         "accept": "application/json",
     }
-    coval_apikey = os.getenv('covalent_api_key')
+    coval_apikey = os.getenv('COVALENT_API_KEY')
     basic = HTTPBasicAuth(coval_apikey, '')
     response = requests.get(url, headers=headers, auth=basic)
     sleep(1)
@@ -144,7 +144,7 @@ def getTokenHolderCount(tokenAddress, block=0):
 
 def getBlockByTimestamp(timestamp):
     # takes timestamp and returns block height
-    m_apikey = os.getenv('moralis_api_key')
+    m_apikey = os.getenv('MORALIS_API_KEY')
     headers = {"X-API-Key": m_apikey, "accept": "application/json",}
     url = f'https://deep-index.moralis.io/api/v2/dateToBlock?chain=eth&date={timestamp}'
     resp = requests.get(url, headers=headers)
@@ -188,9 +188,9 @@ def fetchSnowFlakeData():
     print('Fetching SnowFlake Data...')
     #create connection
     conn = snowflake.connector.connect(
-        user=os.getenv('sn_user'),
-        password=os.getenv('sn_password'),
-        account=os.getenv('sn_account'),
+        user=os.getenv('SN_USER'),
+        password=os.getenv('SN_PASSWORD'),
+        account=os.getenv('SN_ACCOUNT'),
         database="ARTEMIS_ANALYTICS",
         schema="PROD"
     )
