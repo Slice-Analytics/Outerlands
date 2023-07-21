@@ -115,7 +115,10 @@ def fetchWalletTrackerData():
         liquidity = 0
         if liquidity_results.get('data'):
             for lp in liquidity_results['data']:
-                liquidity += float(lp.get('attributes', {}).get('reserve_in_usd', 0))
+                if lp.get('attributes', {}).get('reserve_in_usd', 0):
+                    liquidity += float(lp.get('attributes', {}).get('reserve_in_usd', 0))
+                else:
+                    pass
         liquidity_dict[address] = liquidity
         rl_dur = perf_counter()-rl_st
         if rl_dur < 2.5:
