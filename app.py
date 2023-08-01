@@ -294,7 +294,7 @@ wt_table = dash_table.DataTable(
 section1_notes = [
     "Notes:",
     html.Br(),
-    "- Search Parameters: mcap > $100M and TVL > $10M",
+    "- Search Parameters: mcap > $200M and TVL > $50M",
     html.Br(),
     "- MCAP refers to a protocol's token. If $0, then the protocol has no token or no token data.",
     html.Br(),

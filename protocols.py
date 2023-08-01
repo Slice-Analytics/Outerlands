@@ -222,8 +222,8 @@ def fetchProtocolData():
     # Initializes Dataframe
     df = pd.json_normalize(protocols)
     # Filters Protocols based on minimum tvl requirement
-    min_mcap = 100_000_000
-    min_tvl = 10_000_000
+    min_mcap = 200_000_000
+    min_tvl = 50_000_000
     print(f'Min TVL: {min_tvl} | Min mcap: {min_mcap}')
     df = df[(df['tvl'] >= min_tvl) | (df['mcap'] >= min_mcap)]
     print(f'Protocols Tracked: {len(df)}')
