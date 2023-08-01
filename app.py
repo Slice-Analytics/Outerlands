@@ -208,6 +208,7 @@ protocol_table = dash_table.DataTable(
     data=protocol_data.to_dict('records'),
     cell_selectable=False,
     sort_action='native',
+    virtualization=True,
     fixed_rows={'headers': True},
     style_table={
         'height': '90vh',
@@ -264,6 +265,7 @@ wt_table = dash_table.DataTable(
     data=wt_data.to_dict('records'),
     cell_selectable=False,
     sort_action='native',
+    virtualization=True,
     fixed_rows={'headers': True},
     style_table={
         'height': '90vh',
