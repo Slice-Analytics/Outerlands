@@ -12,6 +12,7 @@ import pandas as pd
 import requests
 import os
 
+
 from protocols import fetchProtocolData
 from wallettracker import fetchWalletTrackerData
 
@@ -146,6 +147,13 @@ def updateLongPull(n, last_updated, protocol_data, wt_data):
         print('Update Process Complete')
         return last_updated, protocol_data, wt_data
     else:
+        print('Update Process Complete')
+        protocol_data = fetchSupabaseProtocolData()
+        protocol_data[numeric_pd] = protocol_data[numeric_pd].apply(pd.to_numeric)
+        protocol_data = protocol_data.to_dict('records')
+        wt_data = fetchSupabaseWTData()
+        wt_data[numeric_wt] = wt_data[numeric_wt].apply(pd.to_numeric)
+        wt_data = wt_data.to_dict('records')
         print('Update Process Complete')
         return last_updated, protocol_data, wt_data
 
