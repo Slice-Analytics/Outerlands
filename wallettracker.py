@@ -113,7 +113,7 @@ def fetchWalletTrackerData():
         rl_st = perf_counter()
         liquidity_results = getTopPoolsByToken(address)
         liquidity = 0
-        if liquidity_results.get('data'):
+        if liquidity_results.get('data', ''):
             for lp in liquidity_results['data']:
                 if lp.get('attributes', {}).get('reserve_in_usd', 0):
                     liquidity += float(lp.get('attributes', {}).get('reserve_in_usd', 0))
