@@ -207,7 +207,7 @@ columns1 = [
     dict(id='Holders (1md)', name='Holders (1md)', type='numeric', format=percentage),
     dict(id='DAU (7dma)', name='DAU (7dma)', type='numeric', format=percentage),
     dict(id='DAU (1mma)', name='DAU (1mma)', type='numeric', format=percentage),
-    dict(id='Status', name='Status'),
+    #dict(id='Status', name='Status'),
 ]
 protocol_data = protocol_data[cols_list]
 protocol_table = dash_table.DataTable(
@@ -341,7 +341,7 @@ app.layout = html.Div(
                     [
                         html.A(
                             [
-                                #html.Img(src=r'C:\Users\Sector\Python Projects\Github_projects\Outerlands\logo.png', style={'height': '50px'}),
+                                html.Img(src='logo.png', style={'height': '50px'}),
                                 "Powered by Slice Analytics"
                             ],
                             href="https://www.sliceanalytics.xyz/",
