@@ -341,8 +341,8 @@ app.layout = html.Div(
                     [
                         html.A(
                             [
-                                html.Img(src='logo.png', style={'height': '50px'}),
-                                "Powered by Slice Analytics"
+                                "Powered by  ",
+                                html.Img(src='/assets/logo_name.png', style={'height': '50px', 'marginLeft': '10px'}),
                             ],
                             href="https://www.sliceanalytics.xyz/",
                             style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flex-end', 'color': 'rgb(0,0,0)', 'padding': '4vh'},
