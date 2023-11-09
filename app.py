@@ -17,8 +17,8 @@ from protocols import fetchProtocolData
 from wallettracker import fetchWalletTrackerData
 
 
-from dotenv import load_dotenv
-load_dotenv()  # take environment variables from .env.
+#from dotenv import load_dotenv
+#load_dotenv()  # take environment variables from .env.
 
 
 if 'REDIS_URL' in os.environ:
