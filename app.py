@@ -17,8 +17,8 @@ from protocols import fetchProtocolData
 from wallettracker import fetchWalletTrackerData
 
 
-# from dotenv import load_dotenv
-# load_dotenv()  # take environment variables from .env.
+from dotenv import load_dotenv
+load_dotenv()  # take environment variables from .env.
 
 
 if 'REDIS_URL' in os.environ:
@@ -334,13 +334,35 @@ section2_notes = [
 app.layout = html.Div(
     style={'background': primary_color, 'color': font_color, 'padding': '3.5vh'},
     children=[
-        dbc.Row(
+ dbc.Row(
             [
-                dbc.Col([html.H1("Variant", style=H1_style)]),
-                dbc.Col([html.Div(id='last_updated', children='Last Updated: ', style=H1_style)]),
+                dbc.Col([html.H1("Multi-Chain Metrics", style=H1_style)]),
+                dbc.Col(
+                    [
+                        html.A(
+                            [
+                                #html.Img(src=r'C:\Users\Sector\Python Projects\Github_projects\Outerlands\logo.png', style={'height': '50px'}),
+                                "Powered by Slice Analytics"
+                            ],
+                            href="https://www.sliceanalytics.xyz/",
+                            style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flex-end', 'color': 'rgb(0,0,0)', 'padding': '4vh'},
+                        )
+                    ],
+                    width={"size": 6, "order": "last"},
+                    style={'display': 'flex', 'justifyContent': 'flex-end'}
+                ),
             ],
-            justify="around",
+            justify="between",  
         ),
+
+        # dbc.Row(
+        #     [
+        #         dbc.Col([html.H1("Multi-Chain Metrics", style=H1_style)]),
+        #         #dbc.Col([html.Div(id='last_updated', children='Last Updated: ', style=H1_style)]),
+        #     ],
+        #     justify="around",
+        # ),
+
         html.Br(),
         dbc.Container(
             [
@@ -355,13 +377,13 @@ app.layout = html.Div(
                 ),
                 html.Div(html.P(section1_notes, style={'padding': '2vh'})),
                 html.Br(),
-                dbc.Row(html.H2("Wallet Tracker", style=H1_style)),
-                dbc.Row(wt_table),
-                html.Div([
-                    html.Button("Download Wallet Tracker Data", id="btn-download-WTD", style=btn_style),
-                    dcc.Download(id="download-wt")
-                ]),
-                html.Div(html.P(section2_notes, style={'padding': '2vh'})),
+                # dbc.Row(html.H2("Wallet Tracker", style=H1_style)),
+                # dbc.Row(wt_table),
+                # html.Div([
+                #     html.Button("Download Wallet Tracker Data", id="btn-download-WTD", style=btn_style),
+                #     dcc.Download(id="download-wt")
+                # ]),
+                # html.Div(html.P(section2_notes, style={'padding': '2vh'})),
                 html.A(
                     "Powered by Slice Analytics",
                     href="https://www.sliceanalytics.xyz/",
